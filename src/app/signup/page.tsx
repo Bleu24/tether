@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useUser } from "@/src/_contexts/UserContext";
 
 export const data = {
     title: "Sign Up | Tether",
@@ -8,6 +10,8 @@ export const data = {
 };
 
 export default function SignUpPage() {
+    const router = useRouter();
+    const { setUser } = useUser();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [touched, setTouched] = useState<{ email?: boolean; password?: boolean }>({});
@@ -32,9 +36,9 @@ export default function SignUpPage() {
         setSubmitted(true);
         setTouched({ email: true, password: true });
         if (hasErrors) return;
-        // TODO: Replace with real submit
-        // For now, just simulate success
-        alert("Thanks for signing up! We'll set up your account soon.");
+        // Simulate account creation and set auth context, then navigate to discover
+        setUser({ name: email.split("@")[0], email });
+        router.push("/date/discover");
     }
 
     return (
