@@ -14,6 +14,7 @@ export const data = {
 export default function SignUpPage() {
     const router = useRouter();
     const { setUser } = useUser();
+    const [mode, setMode] = useState<"signup" | "login">("signup");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [touched, setTouched] = useState<{ email?: boolean; password?: boolean }>({});
@@ -38,25 +39,21 @@ export default function SignUpPage() {
         setSubmitted(true);
         setTouched({ email: true, password: true });
         if (hasErrors) return;
-        // Create user via backend then redirect to setup page
+        // Create or login, then redirect to setup
         try {
             const name = email.split("@")[0] || "User";
-            const res = await fetch(`${API_URL}/api/users`, {
+            const endpoint = mode === "signup" ? "signup" : "login";
+            const body = mode === "signup" ? { name, email, password } : { email, password };
+            const res = await fetch(`${API_URL}/api/auth/${endpoint}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name, email }),
+                credentials: "include",
+                body: JSON.stringify(body),
             });
-            if (!res.ok) throw new Error(`Failed to create user (${res.status})`);
-            const created = await res.json();
-            // Persist basic context (no auth yet)
-            setUser({ name: created.name ?? name, email: created.email ?? email });
-            // Redirect to profile setup with backend id
-            if (created?.id) {
-                router.push(`/setup?userId=${created.id}`);
-            } else {
-                // Fallback to discover if id is missing (shouldn't happen)
-                router.push("/setup");
-            }
+            if (!res.ok) throw new Error(`${mode === "signup" ? "Signup" : "Login"} failed (${res.status})`);
+            const user = await res.json();
+            setUser({ name: user?.name ?? name, email: user?.email ?? email });
+            router.push("/setup");
         } catch (err) {
             // Surface a simple error next to the form for now
             // eslint-disable-next-line no-alert
@@ -66,10 +63,13 @@ export default function SignUpPage() {
 
     return (
         <main className="mx-auto w-full max-w-md px-4 py-16 text-foreground">
-            <h1 className="mb-2 text-center text-3xl font-bold">Create your account</h1>
-            <p className="mb-8 text-center text-foreground/70">
-                We’re keeping it simple while we build the MVP. More options coming soon.
-            </p>
+            <h1 className="mb-2 text-center text-3xl font-bold">{mode === "signup" ? "Create your account" : "Welcome back"}</h1>
+            <p className="mb-8 text-center text-foreground/70">{mode === "signup" ? "We’re keeping it simple while we build the MVP." : "Log in to continue."}</p>
+
+            <div className="mb-6 grid grid-cols-2 rounded-md border p-1 text-sm">
+                <button type="button" className={`rounded-md px-3 py-2 ${mode === "signup" ? "bg-cyan-500 text-black" : ""}`} onClick={() => setMode("signup")}>Sign up</button>
+                <button type="button" className={`rounded-md px-3 py-2 ${mode === "login" ? "bg-cyan-500 text-black" : ""}`} onClick={() => setMode("login")}>Log in</button>
+            </div>
 
             <form className="space-y-4" noValidate onSubmit={onSubmit}>
                 <div>
@@ -96,9 +96,7 @@ export default function SignUpPage() {
                     )}
                 </div>
                 <div>
-                    <label className="mb-1 block text-sm text-foreground/80" htmlFor="password">
-                        Password
-                    </label>
+                    <label className="mb-1 block text-sm text-foreground/80" htmlFor="password">Password</label>
                     <input
                         id="password"
                         name="password"
@@ -118,13 +116,7 @@ export default function SignUpPage() {
                         </p>
                     )}
                 </div>
-                <button
-                    type="submit"
-                    disabled={hasErrors && submitted}
-                    className="w-full rounded-md bg-cyan-500 px-4 py-2 text-sm font-medium text-black transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                    Continue
-                </button>
+                <button type="submit" disabled={hasErrors && submitted} className="w-full rounded-md bg-cyan-500 px-4 py-2 text-sm font-medium text-black transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-50">{mode === "signup" ? "Create account" : "Log in"}</button>
             </form>
 
             <p className="mt-6 text-center text-xs text-foreground/60">
