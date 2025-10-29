@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/src/_contexts/UserContext";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+
 export const data = {
     title: "Sign Up | Tether",
     description: "Create your Tether account to start discovering matches.",
@@ -31,14 +33,35 @@ export default function SignUpPage() {
 
     const hasErrors = Boolean(emailError || passwordError);
 
-    function onSubmit(e: React.FormEvent) {
+    async function onSubmit(e: React.FormEvent) {
         e.preventDefault();
         setSubmitted(true);
         setTouched({ email: true, password: true });
         if (hasErrors) return;
-        // Simulate account creation and set auth context, then navigate to discover
-        setUser({ name: email.split("@")[0], email });
-        router.push("/date/discover");
+        // Create user via backend then redirect to setup page
+        try {
+            const name = email.split("@")[0] || "User";
+            const res = await fetch(`${API_URL}/api/users`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name, email }),
+            });
+            if (!res.ok) throw new Error(`Failed to create user (${res.status})`);
+            const created = await res.json();
+            // Persist basic context (no auth yet)
+            setUser({ name: created.name ?? name, email: created.email ?? email });
+            // Redirect to profile setup with backend id
+            if (created?.id) {
+                router.push(`/setup?userId=${created.id}`);
+            } else {
+                // Fallback to discover if id is missing (shouldn't happen)
+                router.push("/setup");
+            }
+        } catch (err) {
+            // Surface a simple error next to the form for now
+            // eslint-disable-next-line no-alert
+            alert((err as any)?.message ?? String(err));
+        }
     }
 
     return (
