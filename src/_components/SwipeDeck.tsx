@@ -8,7 +8,7 @@ import { Heart, X } from "lucide-react";
 export type Profile = {
     id: string | number;
     name: string;
-    age: number;
+    age?: number; // optional: backend may not provide
     image?: string; // remote or local URL
     bio?: string;
     tags?: string[];
@@ -20,10 +20,14 @@ export default function SwipeDeck({
     items,
     loop = true,
     onSwipe,
+    signupGateEnabled = false,
+    signupGateThreshold = 5,
 }: {
     items: Profile[];
     loop?: boolean;
     onSwipe?: (profile: Profile, dir: Direction) => void;
+    signupGateEnabled?: boolean;
+    signupGateThreshold?: number;
 }) {
     const [stack, setStack] = useState<Profile[]>(items);
     const [swipeCount, setSwipeCount] = useState<number>(0);
@@ -103,13 +107,15 @@ export default function SwipeDeck({
         start.current.dragging = false;
         setZone(null);
         // increment swipe counter and trigger signup modal after threshold
-        setSwipeCount((prev) => {
-            const next = prev + 1;
-            if (next >= 5) {
-                setShowSignupModal(true);
-            }
-            return next;
-        });
+        if (signupGateEnabled) {
+            setSwipeCount((prev) => {
+                const next = prev + 1;
+                if (next >= signupGateThreshold) {
+                    setShowSignupModal(true);
+                }
+                return next;
+            });
+        }
     }
 
     function handlePointerUp(e: React.PointerEvent<HTMLDivElement>) {
@@ -172,7 +178,8 @@ export default function SwipeDeck({
                                 <div className="rounded-xl bg-gradient-to-t from-black/70 via-black/40 to-transparent p-4">
                                     <div className="text-white/95 drop-shadow-sm">
                                         <div className="text-lg font-semibold">
-                                            {p.name}, {p.age}
+                                            {p.name}
+                                            {typeof p.age === "number" ? <span>, {p.age}</span> : null}
                                         </div>
                                         {p.bio && (
                                             <p className="mt-1 line-clamp-2 text-xs text-white/80">{p.bio}</p>
