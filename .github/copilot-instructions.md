@@ -21,3 +21,7 @@ applyTo: "**"
 ## Folder Structures
 - for private folders prefix it with underscore (_)
 - when creating a file or folder check the workspace if there is already available, then check if there is a grouping folders (example (landing) folder is a folder that next doesn't take on its route but it can be used to group folders that can be routed)
+
+## Writing README.md
+- write a guide on how to setup the project
+- make sure each documented piece is concisely written
