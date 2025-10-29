@@ -1,9 +1,12 @@
-import SwipeDeck, { type Profile } from "@/src/_components/SwipeDeck";
+"use client";
 
-export const metadata = {
-    title: "Tether — Date",
-    description: "Discover matches and plan great dates.",
-};
+import SwipeDeck, { type Profile } from "@/src/_components/SwipeDeck";
+import { useUser } from "@/src/_contexts/UserContext";
+
+// export const metadata = {
+//     title: "Tether — Date",
+//     description: "Discover matches and plan great dates.",
+// };
 
 const demoProfiles: Profile[] = [
     {
@@ -41,6 +44,8 @@ const demoProfiles: Profile[] = [
 ];
 
 export default function DatePage() {
+    const { user } = useUser();
+    const signupGateEnabled = !user; // gate only when not logged in
     return (
         <main className="min-h-[80vh] bg-background py-10">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -50,7 +55,7 @@ export default function DatePage() {
                 </div>
 
                 <div className="mt-8 flex justify-center">
-                    <SwipeDeck items={demoProfiles} />
+                    <SwipeDeck items={demoProfiles} signupGateEnabled={signupGateEnabled} signupGateThreshold={5} />
                 </div>
             </div>
         </main>
