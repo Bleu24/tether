@@ -20,5 +20,15 @@ export default function SwipeDeckWithActions({ items, meId, loop = false }: { it
         }
     }
 
-    return <SwipeDeck items={items} loop={loop} onSwipe={handleSwipe} signupGateEnabled={false} />;
+    return (
+        <SwipeDeck
+            items={items}
+            loop={loop}
+            onSwipe={handleSwipe}
+            onEmpty={() => {
+                try { window.dispatchEvent(new CustomEvent("deck:empty")); } catch { }
+            }}
+            signupGateEnabled={false}
+        />
+    );
 }
