@@ -28,7 +28,7 @@ type Pref = {
 };
 
 export default function EditProfileModal({ open, onClose, userId, initial }: Props) {
-        const [tab, setTab] = useState<"profile" | "preferences" | "interests">("profile");
+    const [tab, setTab] = useState<"profile" | "preferences" | "interests">("profile");
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -65,23 +65,23 @@ export default function EditProfileModal({ open, onClose, userId, initial }: Pro
             setSaving(true);
             setError(null);
             // Update user profile
-                const toYmd = (val: string | undefined) => {
-                    if (!val) return undefined as string | undefined;
-                    if (/^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
-                    const d = new Date(val);
-                    if (isNaN(d.getTime())) return undefined as string | undefined;
-                    const y = d.getFullYear();
-                    const m = String(d.getMonth() + 1).padStart(2, "0");
-                    const day = String(d.getDate()).padStart(2, "0");
-                    return `${y}-${m}-${day}`;
-                };
+            const toYmd = (val: string | undefined) => {
+                if (!val) return undefined as string | undefined;
+                if (/^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
+                const d = new Date(val);
+                if (isNaN(d.getTime())) return undefined as string | undefined;
+                const y = d.getFullYear();
+                const m = String(d.getMonth() + 1).padStart(2, "0");
+                const day = String(d.getDate()).padStart(2, "0");
+                return `${y}-${m}-${day}`;
+            };
             const uRes = await fetch(`${API_URL}/api/users/${userId}`, {
                 method: "PUT",
                 credentials: "include",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     name: form.name,
-                        birthdate: toYmd(form.birthdate || undefined),
+                    birthdate: toYmd(form.birthdate || undefined),
                     gender: form.gender || undefined,
                     location: form.location || undefined,
                     bio: form.bio || undefined,
@@ -109,7 +109,7 @@ export default function EditProfileModal({ open, onClose, userId, initial }: Pro
     }
 
     return (
-            <Modal open={open} onClose={onClose} title="Edit Profile" widthClassName="max-w-2xl">
+        <Modal open={open} onClose={onClose} title="Edit Profile" widthClassName="max-w-2xl">
             {/* Tabs */}
             <div className="flex items-center gap-4 border-b border-white/10">
                 <button
@@ -124,15 +124,15 @@ export default function EditProfileModal({ open, onClose, userId, initial }: Pro
                 >
                     Preferences
                 </button>
-                    <button
-                        className={`pb-2 text-sm ${tab === "interests" ? "border-b-2 border-fuchsia-400 font-medium" : "text-foreground/70"}`}
-                        onClick={() => setTab("interests")}
-                    >
-                        Interests
-                    </button>
+                <button
+                    className={`pb-2 text-sm ${tab === "interests" ? "border-b-2 border-fuchsia-400 font-medium" : "text-foreground/70"}`}
+                    onClick={() => setTab("interests")}
+                >
+                    Interests
+                </button>
             </div>
 
-                    {tab === "profile" ? (
+            {tab === "profile" ? (
                 <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
                     <label className="text-sm">Name
                         <input className="mt-1 w-full rounded-md border border-white/10 bg-white/5 px-3 py-2" value={form.name}
@@ -161,7 +161,7 @@ export default function EditProfileModal({ open, onClose, userId, initial }: Pro
                             onChange={(e) => setForm({ ...form, bio: e.target.value })} />
                     </label>
                 </div>
-                            ) : tab === "preferences" ? (
+            ) : tab === "preferences" ? (
                 <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
                     <label className="text-sm">Min Age
                         <input type="number" className="mt-1 w-full rounded-md border border-white/10 bg-white/5 px-3 py-2" value={pref.min_age}
@@ -185,50 +185,49 @@ export default function EditProfileModal({ open, onClose, userId, initial }: Pro
                         </select>
                     </label>
                 </div>
-                        ) : (
-                            <div className="mt-4 space-y-4">
-                                <div className="flex items-center justify-between text-xs text-foreground/70">
-                                    <span>Select up to {INTEREST_MAX} interests</span>
-                                    <span>
-                                        {pref.interests.length}/{INTEREST_MAX} selected
-                                    </span>
-                                </div>
+            ) : (
+                <div className="mt-4 space-y-4">
+                    <div className="flex items-center justify-between text-xs text-foreground/70">
+                        <span>Select up to {INTEREST_MAX} interests</span>
+                        <span>
+                            {pref.interests.length}/{INTEREST_MAX} selected
+                        </span>
+                    </div>
 
-                                {INTEREST_CATEGORIES.map((cat) => (
-                                    <div key={cat.name}>
-                                        <div className="mb-2 text-sm font-medium">{cat.name}</div>
-                                        <div className="flex flex-wrap gap-2">
-                                            {cat.items.map((item) => {
-                                                const selected = pref.interests.includes(item.key);
-                                                const atLimit = !selected && pref.interests.length >= INTEREST_MAX;
-                                                return (
-                                                    <button
-                                                        key={item.key}
-                                                        type="button"
-                                                        disabled={atLimit}
-                                                        onClick={() => {
-                                                            setPref((p) => {
-                                                                const exists = p.interests.includes(item.key);
-                                                                const next = exists
-                                                                    ? p.interests.filter((k) => k !== item.key)
-                                                                    : (p.interests.length < INTEREST_MAX ? [...p.interests, item.key] : p.interests);
-                                                                return { ...p, interests: next };
-                                                            });
-                                                        }}
-                                                        className={`rounded-full px-3 py-1 text-xs transition ${
-                                                            selected
-                                                                ? "border border-fuchsia-400/50 bg-fuchsia-500/20 text-fuchsia-200"
-                                                                : `border ${atLimit ? "border-white/5 text-foreground/40" : "border-white/10 text-foreground/80 hover:bg-white/5"}`
-                                                        }`}
-                                                    >
-                                                        {item.label}
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                ))}
+                    {INTEREST_CATEGORIES.map((cat) => (
+                        <div key={cat.name}>
+                            <div className="mb-2 text-sm font-medium">{cat.name}</div>
+                            <div className="flex flex-wrap gap-2">
+                                {cat.items.map((item) => {
+                                    const selected = pref.interests.includes(item.key);
+                                    const atLimit = !selected && pref.interests.length >= INTEREST_MAX;
+                                    return (
+                                        <button
+                                            key={item.key}
+                                            type="button"
+                                            disabled={atLimit}
+                                            onClick={() => {
+                                                setPref((p) => {
+                                                    const exists = p.interests.includes(item.key);
+                                                    const next = exists
+                                                        ? p.interests.filter((k) => k !== item.key)
+                                                        : (p.interests.length < INTEREST_MAX ? [...p.interests, item.key] : p.interests);
+                                                    return { ...p, interests: next };
+                                                });
+                                            }}
+                                            className={`rounded-full px-3 py-1 text-xs transition ${selected
+                                                    ? "border border-fuchsia-400/50 bg-fuchsia-500/20 text-fuchsia-200"
+                                                    : `border ${atLimit ? "border-white/5 text-foreground/40" : "border-white/10 text-foreground/80 hover:bg-white/5"}`
+                                                }`}
+                                        >
+                                            {item.label}
+                                        </button>
+                                    );
+                                })}
                             </div>
+                        </div>
+                    ))}
+                </div>
             )}
 
             {error && <div className="mt-3 rounded-md border border-red-500/30 bg-red-500/10 p-2 text-sm text-red-300">{error}</div>}
