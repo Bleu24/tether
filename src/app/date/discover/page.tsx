@@ -6,6 +6,8 @@ import { UserCircle2, Bolt, BarChart3, Shield, SlidersHorizontal, RefreshCw } fr
 import Link from "next/link";
 import DismissibleOffer from "@/_components/DismissibleOffer";
 import LeftRailTabs from "@/_components/LeftRailTabs";
+import MatchOverlay from "@/_components/MatchOverlay";
+import RightRail from "@/_components/RightRail";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -31,6 +33,17 @@ async function fetchConversations(authCookie: string): Promise<any[]> {
     return (j?.data ?? j ?? []) as any[];
 }
 
+async function fetchLikers(authCookie: string): Promise<any[]> {
+    const res = await fetch(`${API_URL}/api/me/likers`, {
+        headers: { Cookie: `auth_token=${authCookie}` },
+        cache: "no-store",
+    });
+    if (res.status === 401) redirect("/signup");
+    if (!res.ok) throw new Error(`Failed to load likers (${res.status})`);
+    const j = await res.json().catch(() => null);
+    return (j?.data ?? j ?? []) as any[];
+}
+
 async function fetchMe(authCookie: string): Promise<any | null> {
     const res = await fetch(`${API_URL}/api/me`, {
         headers: { Cookie: `auth_token=${authCookie}` },
@@ -47,10 +60,11 @@ export default async function DateDiscoverPage() {
     const auth = cookieStore.get("auth_token")?.value;
     if (!auth) redirect("/signup");
 
-    const [me, discover, convos] = await Promise.all([
+    const [me, discover, convos, likers] = await Promise.all([
         fetchMe(auth),
         fetchMeDiscover(auth),
         fetchConversations(auth),
+        fetchLikers(auth),
     ]);
 
     if (me && !me.setup_complete) {
@@ -113,37 +127,12 @@ export default async function DateDiscoverPage() {
                     </div>
 
                     {/* Matches/Messages tabs */}
-                    <LeftRailTabs convos={convos} />
+                    <LeftRailTabs convos={convos} likers={likers} meId={Number(me?.id)} myTier={me?.subscription_tier} />
                 </aside>
 
-                {/* Right: Deck + controls or empty state */}
-                <section className="flex h-full flex-col items-center justify-center">
-                    <div className="mx-auto max-w-md w-full">
-                        {deckItems.length > 0 ? (
-                            <>
-                                <SwipeDeckWithActions items={deckItems} meId={Number(me?.id)} />
-                                <p className="mt-3 text-center text-xs text-foreground/60">Use ← / → keys or the buttons to pass or like. Tap the card to view next photo.</p>
-                            </>
-                        ) : (
-                            <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
-                                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-white/5">
-                                    <SlidersHorizontal className="h-5 w-5 text-foreground/70" />
-                                </div>
-                                <h2 className="mt-4 text-base font-semibold">No more recommendations</h2>
-                                <p className="mt-1 text-sm text-foreground/70">You’re all caught up. Please adjust your filters to see more people.</p>
-                                <div className="mt-5 flex items-center justify-center gap-3">
-                                    <Link href="/profile" className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/90 px-3 py-2 text-sm font-medium text-black hover:brightness-110">
-                                        <SlidersHorizontal className="h-4 w-4" /> Edit Preferences
-                                    </Link>
-                                    <Link href="/date/discover" className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/80 px-3 py-2 text-sm font-medium text-black hover:brightness-110">
-                                        <RefreshCw className="h-4 w-4" /> Refresh
-                                    </Link>
-                                </div>
-                                <p className="mt-3 text-[11px] text-foreground/60">Tip: Widen age range, increase distance, or set gender to "any" to broaden matches.</p>
-                            </div>
-                        )}
-                    </div>
-                </section>
+                {/* Right: deck or chat panel (client switches via URL) */}
+                <MatchOverlay meId={Number(me?.id)} />
+                <RightRail meId={Number(me?.id)} deckItems={deckItems} convos={convos} />
             </div>
         </main>
     );
