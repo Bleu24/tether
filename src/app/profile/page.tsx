@@ -29,12 +29,14 @@ export default async function ProfilePage() {
     const me = await fetchMe(auth);
     if (!me) redirect("/signup");
 
+    const resolveUrl = (u: string) => (u?.startsWith("http") ? u : `${API_URL}${u}`);
+
     const previewUser = {
         id: me.id,
         name: me.name ?? "You",
         age: typeof me.age === "number" ? me.age : undefined,
         bio: me.bio ?? undefined,
-        photos: Array.isArray(me.photos) ? me.photos : [],
+        photos: Array.isArray(me.photos) ? me.photos.map((p: string) => resolveUrl(p)) : [],
     };
 
     return (
@@ -90,7 +92,7 @@ export default async function ProfilePage() {
                         gender: me.gender ?? null,
                         location: me.location ?? null,
                         bio: me.bio ?? null,
-                        photos: Array.isArray(me.photos) ? me.photos : [],
+                        photos: Array.isArray(me.photos) ? me.photos.map((p: string) => resolveUrl(p)) : [],
                     }} />
 
                     {/* Logout button */}
