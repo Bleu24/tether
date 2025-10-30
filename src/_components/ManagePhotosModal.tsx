@@ -14,7 +14,8 @@ type Props = {
 };
 
 export default function ManagePhotosModal({ open, onClose, userId, initialPhotos }: Props) {
-    const [photos, setPhotos] = useState<string[]>(initialPhotos || []);
+    const resolveUrl = (u: string) => (u?.startsWith("http") ? u : `${API_URL}${u}`);
+    const [photos, setPhotos] = useState<string[]>((initialPhotos || []).map((p) => resolveUrl(p)));
     const [uploading, setUploading] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
 
@@ -31,7 +32,8 @@ export default function ManagePhotosModal({ open, onClose, userId, initialPhotos
             const res = await fetch(`${API_URL}/api/uploads`, { method: "POST", credentials: "include", body: fd });
             const j = await res.json().catch(() => ({}));
             const urls: string[] = j.urls || [];
-            const next = [...photos, ...urls].slice(0, 9);
+            const abs = urls.map((u) => resolveUrl(u));
+            const next = [...photos, ...abs].slice(0, 9);
             setPhotos(next);
         } finally {
             setUploading(false);
