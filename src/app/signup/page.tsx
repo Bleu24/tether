@@ -39,7 +39,7 @@ export default function SignUpPage() {
         setSubmitted(true);
         setTouched({ email: true, password: true });
         if (hasErrors) return;
-        // Create or login, then redirect to setup
+        // Create or login, then redirect based on setup status
         try {
             const name = email.split("@")[0] || "User";
             const endpoint = mode === "signup" ? "signup" : "login";
@@ -51,10 +51,25 @@ export default function SignUpPage() {
                 body: JSON.stringify(body),
             });
             if (!res.ok) throw new Error(`${mode === "signup" ? "Signup" : "Login"} failed (${res.status})`);
-            const j = await res.json().catch(() => null);
-            const u = j?.data ?? j;
-            setUser({ name: u?.name ?? name, email: u?.email ?? email });
-            router.push("/setup");
+            // After auth, check session to decide where to go
+            try {
+                const meRes = await fetch(`${API_URL}/api/me`, { credentials: "include" });
+                if (meRes.ok) {
+                    const j = await meRes.json().catch(() => null);
+                    const me = j?.data ?? j;
+                    setUser({ id: me?.id, name: me?.name ?? name, email: me?.email ?? email, photo: Array.isArray(me?.photos) ? me.photos[0] : null, setupComplete: !!me?.setup_complete });
+                    if (me?.setup_complete) {
+                        router.replace("/date/discover");
+                        return;
+                    }
+                } else {
+                    // Fallback to minimal context if /api/me not available yet
+                    setUser({ name, email });
+                }
+            } catch {
+                setUser({ name, email });
+            }
+            router.replace("/setup");
         } catch (err) {
             // Surface a simple error next to the form for now
             // eslint-disable-next-line no-alert
