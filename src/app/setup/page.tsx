@@ -112,6 +112,18 @@ export default function SetupProfilePage() {
 
     const resolveUrl = (u: string) => (u?.startsWith("http") ? u : `${API_URL}${u}`);
 
+    // Normalize any date-like value into yyyy-MM-dd for <input type="date"/>
+    const toYmd = (val?: string | null): string => {
+        if (!val) return "";
+        if (/^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
+        const d = new Date(val);
+        if (isNaN(d.getTime())) return "";
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        return `${y}-${m}-${day}`;
+    };
+
     useEffect(() => {
         // Fetch current user from JWT cookie with a short retry to avoid race after signup/login
         let cancelled = false;
@@ -147,7 +159,8 @@ export default function SetupProfilePage() {
                 const u = await tryFetch();
                 if (cancelled) return;
                 if (u?.setup_complete) { router.replace("/date/discover"); return; }
-                setUser({ id: u.id, name: u.name ?? "You", email: u.email, photo: Array.isArray(u.photos) ? u.photos[0] : null });
+                setUser({ id: u.id, name: u.name ?? "You", email: u.email, photo: Array.isArray(u.photos) ? u.photos[0] : null, setupComplete: !!u.setup_complete });
+                setSessionUser(u);
                 setSessionReady(true);
                 // Fetch preferences for this user (may not exist yet)
                 if (!Number.isFinite(u.id)) throw new Error("Invalid session user id");
@@ -162,7 +175,7 @@ export default function SetupProfilePage() {
                 setForm((prev) => ({
                     ...prev,
                     name: u.name ?? "",
-                    birthdate: u.birthdate ?? "",
+                    birthdate: toYmd(u.birthdate ?? undefined),
                     gender: (u.gender ?? "") as Gender | "",
                     location: u.location ?? "",
                     bio: u.bio ?? "",
@@ -218,20 +231,12 @@ export default function SetupProfilePage() {
             const photos = [...form.photos];
             const interests = [...form.interestsSelected];
 
-            const toYmd = (val: string | undefined) => {
-                if (!val) return undefined as string | undefined;
-                if (/^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
-                const d = new Date(val);
-                if (isNaN(d.getTime())) return undefined as string | undefined;
-                const y = d.getFullYear();
-                const m = String(d.getMonth() + 1).padStart(2, "0");
-                const day = String(d.getDate()).padStart(2, "0");
-                return `${y}-${m}-${day}`;
-            };
-
             const userBody: Partial<User> = {
                 name: form.name,
-                birthdate: toYmd(form.birthdate || undefined),
+                birthdate: ((): string | undefined => {
+                    const bd = toYmd(form.birthdate || undefined);
+                    return bd || undefined;
+                })(),
                 gender: form.gender || undefined,
                 location: form.location || undefined,
                 bio: form.bio || undefined,
@@ -270,11 +275,11 @@ export default function SetupProfilePage() {
             });
 
             const [savedUser, savedPref] = await Promise.all([putUser, putPref]);
-            setUser(savedUser);
+            // Normalize and update local context immediately
+            setUser({ id: savedUser.id, name: savedUser.name ?? "You", email: savedUser.email, photo: Array.isArray(savedUser.photos) ? savedUser.photos[0] : null, setupComplete: true });
             setPref(savedPref);
-            setSuccess("Profile saved successfully. Redirecting…");
-            // Navigate to discover after a short confirmation
-            setTimeout(() => router.push("/date/discover"), 800);
+            // Navigate to discover immediately after save
+            router.replace("/date/discover");
         } catch (e: any) {
             setError(e?.message ?? String(e));
         } finally {
