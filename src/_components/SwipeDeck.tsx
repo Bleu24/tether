@@ -21,12 +21,14 @@ export default function SwipeDeck({
     items,
     loop = true,
     onSwipe,
+    onEmpty,
     signupGateEnabled = false,
     signupGateThreshold = 5,
 }: {
     items: Profile[];
     loop?: boolean;
     onSwipe?: (profile: Profile, dir: Direction) => void;
+    onEmpty?: () => void;
     signupGateEnabled?: boolean;
     signupGateThreshold?: number;
 }) {
@@ -100,6 +102,15 @@ export default function SwipeDeck({
         setStack((prev) => {
             const rest = prev.slice(1);
             if (loop) return [...rest, dismissed];
+            // If no more cards, notify listeners
+            if (rest.length === 0) {
+                try {
+                    onEmpty?.();
+                } catch { }
+                try {
+                    window.dispatchEvent(new CustomEvent("deck:empty"));
+                } catch { }
+            }
             return rest;
         });
         // reset top ref styles
