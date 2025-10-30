@@ -1,7 +1,7 @@
 "use client";
 
-import SwipeDeck, { type Profile } from "@/src/_components/SwipeDeck";
-import { useUser } from "@/src/_contexts/UserContext";
+import SwipeDeck, { type Profile } from "@/_components/SwipeDeck";
+import { useUser } from "@/_contexts/UserContext";
 
 // export const metadata = {
 //     title: "Tether — Date",
