@@ -10,6 +10,7 @@ export type Profile = {
     name: string;
     age?: number; // optional: backend may not provide
     image?: string; // remote or local URL
+    images?: string[]; // optional multiple images
     bio?: string;
     tags?: string[];
 };
@@ -36,6 +37,8 @@ export default function SwipeDeck({
     const topRef = useRef<HTMLDivElement | null>(null);
     const deckRef = useRef<HTMLDivElement | null>(null);
     const start = useRef({ x: 0, y: 0, dragging: false });
+    const [photoIndex, setPhotoIndex] = useState<number>(0);
+    const [detailsOpen, setDetailsOpen] = useState<boolean>(false);
 
     // Precompute next cards (for subtle layering)
     const layered = useMemo(() => stack.slice(0, 4), [stack]);
@@ -123,6 +126,8 @@ export default function SwipeDeck({
         const el = topRef.current;
         const deck = deckRef.current;
         let decided: Direction | null = zone;
+        const moveDx = e.clientX - start.current.x;
+        const moveDy = e.clientY - start.current.y;
         if (!decided && deck) {
             const cardRect = el.getBoundingClientRect();
             const deckRect = deck.getBoundingClientRect();
@@ -136,15 +141,43 @@ export default function SwipeDeck({
         if (decided) {
             animateAway(decided);
         } else {
-            // snap back
-            el.style.transition = "transform 240ms ease-in-out";
-            el.style.transform = "translate(0px, 0px) rotate(0deg)";
+            // treat as tap if very small movement
+            const distance = Math.hypot(moveDx, moveDy);
+            const top = stack[0];
+            const hasGallery = Array.isArray(top?.images) && (top!.images as string[]).length > 1;
+            if (distance < 6 && hasGallery) {
+                setPhotoIndex((i) => {
+                    const len = (top!.images as string[]).length;
+                    return (i + 1) % len;
+                });
+                // snap back just in case any slight transform applied
+                el.style.transition = "transform 180ms ease-in-out";
+                el.style.transform = "translate(0px, 0px) rotate(0deg)";
+            } else {
+                // snap back
+                el.style.transition = "transform 240ms ease-in-out";
+                el.style.transform = "translate(0px, 0px) rotate(0deg)";
+            }
         }
         start.current.dragging = false;
         setZone(null);
     }
 
     const top = stack[0];
+
+    // Reset photo index when top card changes
+    useEffect(() => { setPhotoIndex(0); setDetailsOpen(false); }, [top?.id]);
+
+    // Keyboard shortcuts for actions
+    useEffect(() => {
+        function onKey(e: KeyboardEvent) {
+            if (showSignupModal) return;
+            if (e.key === "ArrowLeft") { animateAway("left"); }
+            if (e.key === "ArrowRight") { animateAway("right"); }
+        }
+        window.addEventListener("keydown", onKey);
+        return () => window.removeEventListener("keydown", onKey);
+    }, [showSignupModal, stack]);
 
     return (
         <div className="relative mx-auto w-full max-w-sm select-none">
@@ -154,6 +187,9 @@ export default function SwipeDeck({
                     const isTop = i === 0;
                     const scale = i === 0 ? 1 : i === 1 ? 0.97 : i === 2 ? 0.94 : 0.91;
                     const translateY = i === 0 ? 0 : i === 1 ? 10 : i === 2 ? 20 : 30;
+                    const bg = isTop
+                        ? (Array.isArray(p.images) && p.images.length ? p.images[photoIndex] : (p.image || undefined))
+                        : (Array.isArray(p.images) && p.images.length ? p.images[0] : (p.image || undefined));
                     return (
                         <div
                             key={p.id}
@@ -168,29 +204,47 @@ export default function SwipeDeck({
                             <div
                                 className="absolute inset-0 bg-cover bg-center"
                                 style={{
-                                    backgroundImage: p.image ? `url(${p.image})` : undefined,
-                                    backgroundColor: p.image ? undefined : "#0f172a",
+                                    backgroundImage: bg ? `url(${bg})` : undefined,
+                                    backgroundColor: bg ? undefined : "#0f172a",
                                 }}
                             />
 
-                            {/* Bottom gradient info bar */}
-                            <div className="pointer-events-none absolute inset-x-0 bottom-0 p-4">
-                                <div className="rounded-xl bg-gradient-to-t from-black/70 via-black/40 to-transparent p-4">
+                            {/* step indicators for gallery */}
+                            {isTop && Array.isArray(p.images) && p.images.length > 1 && (
+                                <div className="absolute inset-x-3 top-3 z-10 flex gap-1">
+                                    {p.images.map((_, idx) => (
+                                        <div key={idx} className={`h-1 flex-1 rounded-full ${idx <= photoIndex ? "bg-white/90" : "bg-white/30"}`} />
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Bottom gradient info bar (clickable to expand details) */}
+                            <div
+                                className="absolute inset-x-0 bottom-0 cursor-pointer"
+                                onPointerDown={(e) => e.stopPropagation()}
+                                onPointerUp={(e) => e.stopPropagation()}
+                                onClick={() => setDetailsOpen((v) => !v)}
+                            >
+                                <div className={`rounded-b-2xl bg-gradient-to-t from-black/80 via-black/50 to-transparent px-4 ${detailsOpen ? "pt-20" : "pt-10"} pb-5`}
+                                >
                                     <div className="text-white/95 drop-shadow-sm">
                                         <div className="text-lg font-semibold">
                                             {p.name}
                                             {typeof p.age === "number" ? <span>, {p.age}</span> : null}
                                         </div>
                                         {p.bio && (
-                                            <p className="mt-1 line-clamp-2 text-xs text-white/80">{p.bio}</p>
+                                            <p className={`mt-1 text-xs text-white/85 ${detailsOpen ? "line-clamp-none" : "line-clamp-2"}`}>{p.bio}</p>
                                         )}
                                         {p.tags && p.tags.length > 0 && (
                                             <div className="mt-2 flex flex-wrap gap-1">
-                                                {p.tags.slice(0, 4).map((t) => (
-                                                    <span key={t} className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-white/85">{t}</span>
+                                                {(detailsOpen ? p.tags : p.tags.slice(0, 4)).map((t) => (
+                                                    <span key={t} className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-white/90">{t}</span>
                                                 ))}
                                             </div>
                                         )}
+                                        <div className="mt-2 text-[10px] text-white/70">
+                                            {detailsOpen ? "Tap to collapse details" : "Tap to view more"}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
