@@ -16,7 +16,7 @@ export default function DeleteAccountModal({ open, onClose, userId }: Props) {
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
 
-        async function doDelete() {
+    async function doDelete() {
         if (confirm !== "DELETE") return;
         setLoading(true);
         setError(null);
@@ -27,7 +27,7 @@ export default function DeleteAccountModal({ open, onClose, userId }: Props) {
                 method: "PUT",
                 credentials: "include",
                 headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ name: "Deleted User", photos: [] }),
+                body: JSON.stringify({ name: "Deleted User", photos: [] }),
             });
             if (!res.ok) throw new Error(`Delete failed (${res.status})`);
             // Clear cookie by redirecting to signup; server may revoke session on profile mutation policy.
