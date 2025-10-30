@@ -3,8 +3,11 @@
 import React, { createContext, useState, useContext } from "react";
 
 type User = {
+    id?: number;
     name: string;
-    email: string;
+    email?: string;
+    photo?: string | null;
+    setupComplete?: boolean;
 };
 
 type UserContext = {
