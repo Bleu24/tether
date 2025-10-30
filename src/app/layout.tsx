@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import "./globals.css";
 import { UserProvider } from "../_contexts/UserContext";
-import ThemeToggle from "@/components/ui/theme-toggle";
+import AppChrome from "@/_components/AppChrome";
 
 export const metadata: Metadata = {
   title: "Tether",
@@ -21,76 +20,7 @@ export default function RootLayout({
       </head>
       <body>
         <UserProvider>
-          <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-background/70 backdrop-blur supports-[backdrop-filter]:bg-background/55">
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-              <div className="flex h-16 items-center justify-between">
-                {/* Brand */}
-                <Link href="/" className="select-none text-lg font-semibold">
-                  <span className="bg-gradient-to-r from-cyan-400 via-cyan-300 to-white bg-clip-text text-transparent">
-                    Tether
-                  </span>
-                </Link>
-
-                {/* Custom nav links */}
-                <nav aria-label="Primary navigation" className="hidden items-center gap-6 sm:flex">
-                  <Link href="/date" className="relative text-sm text-foreground/80 transition-colors hover:text-foreground">
-                    Date
-                    <span className="pointer-events-none absolute inset-x-0 -bottom-1 block h-px bg-gradient-to-r from-transparent via-cyan-400/80 to-transparent opacity-0 transition-opacity hover:opacity-100" />
-                  </Link>
-                  <Link href="/about" className="relative text-sm text-foreground/80 transition-colors hover:text-foreground">
-                    About
-                    <span className="pointer-events-none absolute inset-x-0 -bottom-1 block h-px bg-gradient-to-r from-transparent via-cyan-400/80 to-transparent opacity-0 transition-opacity hover:opacity-100" />
-                  </Link>
-                  <Link href="/support" className="relative text-sm text-foreground/80 transition-colors hover:text-foreground">
-                    Support
-                    <span className="pointer-events-none absolute inset-x-0 -bottom-1 block h-px bg-gradient-to-r from-transparent via-cyan-400/80 to-transparent opacity-0 transition-opacity hover:opacity-100" />
-                  </Link>
-                </nav>
-
-                {/* Actions */}
-                <div className="flex items-center gap-3">
-                  <ThemeToggle />
-                  <Link href="/signup" className="btn-opposite ml-1">
-                    Sign Up
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </header>
-
-          {children}
-
-          {/* Footer */}
-          <footer className="mt-16 border-t border-white/10 bg-background/60">
-            <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-              <div className="grid gap-8 sm:grid-cols-3">
-                <div>
-                  <Link href="/" className="text-lg font-semibold">
-                    <span className="bg-gradient-to-r from-cyan-400 via-cyan-300 to-white bg-clip-text text-transparent">Tether</span>
-                  </Link>
-                  <p className="mt-2 text-sm text-foreground/60">
-                    Find your person. We’re building an MVP, shipping fast.
-                  </p>
-                </div>
-                <nav className="space-y-2">
-                  <div className="text-sm font-medium text-foreground/70">Navigate</div>
-                  <div className="flex flex-col text-sm text-foreground/80">
-                    <Link href="/date" className="hover:text-foreground">Date</Link>
-                    <Link href="/about" className="hover:text-foreground">About</Link>
-                    <Link href="/support" className="hover:text-foreground">Support</Link>
-                    <Link href="/signup" className="hover:text-foreground">Sign Up</Link>
-                  </div>
-                </nav>
-                <div className="space-y-2">
-                  <div className="text-sm font-medium text-foreground/70">Contact</div>
-                  <p className="text-sm text-foreground/80">
-                    Email: <a className="underline hover:text-foreground" href="mailto:hello@tether.app">hello@tether.app</a>
-                  </p>
-                  <p className="text-sm text-foreground/80">© {new Date().getFullYear()} Tether</p>
-                </div>
-              </div>
-            </div>
-          </footer>
+          <AppChrome>{children}</AppChrome>
         </UserProvider>
       </body>
     </html>
