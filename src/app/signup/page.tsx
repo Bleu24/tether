@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useUser } from "@/src/_contexts/UserContext";
+import { useUser } from "@/_contexts/UserContext";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -51,8 +51,9 @@ export default function SignUpPage() {
                 body: JSON.stringify(body),
             });
             if (!res.ok) throw new Error(`${mode === "signup" ? "Signup" : "Login"} failed (${res.status})`);
-            const user = await res.json();
-            setUser({ name: user?.name ?? name, email: user?.email ?? email });
+            const j = await res.json().catch(() => null);
+            const u = j?.data ?? j;
+            setUser({ name: u?.name ?? name, email: u?.email ?? email });
             router.push("/setup");
         } catch (err) {
             // Surface a simple error next to the form for now
