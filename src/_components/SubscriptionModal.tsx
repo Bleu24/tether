@@ -48,6 +48,21 @@ const PLANS: Plan[] = [
 
 export default function SubscriptionModal({ open, onClose, userId, onSubscribed }: { open: boolean; onClose: () => void; userId: number; onSubscribed?: (tier: string) => void; }) {
     const [busy, setBusy] = React.useState<string | null>(null);
+    const [currentTier, setCurrentTier] = React.useState<string | null>(null);
+
+    // Fetch current tier when opened so we can disable the current plan
+    React.useEffect(() => {
+        if (!open) return;
+        (async () => {
+            try {
+                const res = await fetch(`${API_URL}/api/me`, { credentials: "include", cache: "no-store" });
+                if (!res.ok) return;
+                const j = await res.json().catch(() => null);
+                const me = (j?.data ?? j ?? null) as any | null;
+                setCurrentTier(me?.subscription_tier ?? "free");
+            } catch {}
+        })();
+    }, [open]);
     async function subscribe(plan: Plan["id"]) {
         try {
             setBusy(plan);
@@ -84,10 +99,10 @@ export default function SubscriptionModal({ open, onClose, userId, onSubscribed 
                         </ul>
                         <button
                             className="w-full rounded-md bg-fuchsia-500 px-3 py-2 text-sm font-semibold text-black hover:brightness-105 disabled:opacity-60"
-                            disabled={!!busy}
-                            onClick={() => subscribe(p.id)}
+                            disabled={!!busy || currentTier === p.id}
+                            onClick={() => { if (currentTier !== p.id) subscribe(p.id); }}
                         >
-                            {busy === p.id ? "Processing…" : `Choose ${p.name}`}
+                            {currentTier === p.id ? "Current plan" : busy === p.id ? "Processing…" : `Choose ${p.name}`}
                         </button>
                     </div>
                 ))}
