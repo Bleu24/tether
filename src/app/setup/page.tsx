@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useUser } from "@/_contexts/UserContext";
+import { INTEREST_CATEGORIES, INTEREST_MAX } from "@/lib/interests";
 
 type SubscriptionTier = "free" | "plus" | "gold" | "premium";
 type Gender = "male" | "female" | "non-binary" | "other";
@@ -63,50 +64,7 @@ export default function SetupProfilePage() {
         interestsSelected: [] as string[],
     });
 
-    // Bumble-like curated interests grouped by category (emoji + label)
-    const INTEREST_CATEGORIES: Array<{
-        name: string;
-        items: { key: string; label: string }[];
-    }> = [
-            {
-                name: "Food & drink",
-                items: [
-                    { key: "beer", label: "🍺 Beer" },
-                    { key: "boba", label: "🧋 Boba tea" },
-                    { key: "coffee", label: "☕ Coffee" },
-                    { key: "foodie", label: "🍽️ Foodie" },
-                    { key: "gin", label: "🍸 Gin" },
-                    { key: "pizza", label: "🍕 Pizza" },
-                    { key: "sushi", label: "🍣 Sushi" },
-                    { key: "sweet_tooth", label: "🍬 Sweet tooth" },
-                    { key: "tacos", label: "🌮 Tacos" },
-                    { key: "tea", label: "🫖 Tea" },
-                    { key: "vegan", label: "🌱 Vegan" },
-                    { key: "vegetarian", label: "🥗 Vegetarian" },
-                    { key: "whisky", label: "🥃 Whisky" },
-                    { key: "wine", label: "🍷 Wine" },
-                ],
-            },
-            {
-                name: "Traveling",
-                items: [
-                    { key: "backpacking", label: "🎒 Backpacking" },
-                    { key: "beaches", label: "🏖️ Beaches" },
-                    { key: "camping", label: "🏕️ Camping" },
-                    { key: "exploring_cities", label: "🧭 Exploring new cities" },
-                    { key: "fishing_trips", label: "🎣 Fishing trips" },
-                    { key: "hiking", label: "🥾 Hiking trips" },
-                    { key: "road_trips", label: "🛣️ Road trips" },
-                    { key: "spa_weekends", label: "💆 Spa weekends" },
-                    { key: "staycations", label: "🏡 Staycations" },
-                    { key: "winter_sports", label: "🎿 Winter sports" },
-                    { key: "water_sports", label: "🌊 Water sports" },
-                ],
-            },
-        ];
-
-    // Limit to keep UX simple, feel free to tweak
-    const INTEREST_MAX = 5;
+    // INTEREST_CATEGORIES and INTEREST_MAX are imported from shared lib
     const selectedCount = form.interestsSelected.length;
     const [interestError, setInterestError] = useState<string | null>(null);
 
@@ -532,53 +490,7 @@ export default function SetupProfilePage() {
                                 )}
 
                                 <div className="space-y-6">
-                                    {[
-                                        ...INTEREST_CATEGORIES,
-                                        {
-                                            name: "Gym & Fitness",
-                                            items: [
-                                                { key: "gym", label: "🏋️ Gym" },
-                                                { key: "yoga", label: "🧘 Yoga" },
-                                                { key: "running", label: "🏃 Running" },
-                                            ],
-                                        },
-                                        {
-                                            name: "Music",
-                                            items: [
-                                                { key: "pop", label: "🎤 Pop" },
-                                                { key: "rock", label: "🎸 Rock" },
-                                                { key: "hiphop", label: "🎧 Hip-hop" },
-                                                { key: "jazz", label: "🎷 Jazz" },
-                                                { key: "classical", label: "🎻 Classical" },
-                                            ],
-                                        },
-                                        {
-                                            name: "Education",
-                                            items: [
-                                                { key: "study_buddy", label: "📚 Study" },
-                                                { key: "lifelong_learning", label: "🧠 Lifelong learning" },
-                                            ],
-                                        },
-                                        {
-                                            name: "Religion",
-                                            items: [
-                                                { key: "christian", label: "✝️ Christian" },
-                                                { key: "muslim", label: "☪️ Muslim" },
-                                                { key: "hindu", label: "🕉️ Hindu" },
-                                                { key: "buddhist", label: "☸️ Buddhist" },
-                                                { key: "spiritual", label: "🔮 Spiritual" },
-                                            ],
-                                        },
-                                        {
-                                            name: "Political views",
-                                            items: [
-                                                { key: "apolitical", label: "⚖️ Apolitical" },
-                                                { key: "moderate", label: "⚖️ Moderate" },
-                                                { key: "progressive", label: "⚖️ Progressive" },
-                                                { key: "conservative", label: "⚖️ Conservative" },
-                                            ],
-                                        },
-                                    ].map((cat) => (
+                                    {INTEREST_CATEGORIES.map((cat) => (
                                         <div key={cat.name}>
                                             <h3 className="text-sm font-medium mb-2 text-muted-foreground">{cat.name}</h3>
                                             <div className="flex flex-wrap gap-2">
