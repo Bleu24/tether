@@ -3,7 +3,7 @@
 import { useRef, useState, useMemo, useEffect, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { Heart, X } from "lucide-react";
+import { Heart, X, Star, Zap } from "lucide-react";
 import { VISIBLE_TAGS_COLLAPSED } from "@/lib/interests";
 
 export type Profile = {
@@ -16,7 +16,7 @@ export type Profile = {
     tags?: string[];
 };
 
-type Direction = "left" | "right";
+type Direction = "left" | "right" | "up";
 
 export default function SwipeDeck({
     items,
@@ -25,6 +25,14 @@ export default function SwipeDeck({
     onEmpty,
     signupGateEnabled = false,
     signupGateThreshold = 5,
+    onSuperLike,
+    onBoost,
+    canSuperLike = true,
+    canBoost = true,
+    superLikeCooldownText,
+    boostCooldownText,
+    highlightBoostedIds = [],
+    highlightSuperLikeIds = [],
 }: {
     items: Profile[];
     loop?: boolean;
@@ -32,6 +40,14 @@ export default function SwipeDeck({
     onEmpty?: () => void;
     signupGateEnabled?: boolean;
     signupGateThreshold?: number;
+    onSuperLike?: (profile: Profile) => void;
+    onBoost?: () => void;
+    canSuperLike?: boolean;
+    canBoost?: boolean;
+    superLikeCooldownText?: string;
+    boostCooldownText?: string;
+    highlightBoostedIds?: number[];
+    highlightSuperLikeIds?: number[];
 }) {
     const [stack, setStack] = useState<Profile[]>(items);
     const [swipeCount, setSwipeCount] = useState<number>(0);
@@ -84,11 +100,12 @@ export default function SwipeDeck({
         const el = topRef.current;
         if (!el) return;
         el.style.transition = "transform 300ms ease-out";
-        const offX = (dir === "right" ? 1 : -1) * (window.innerWidth * 1.1);
+        const offX = dir === "left" || dir === "right" ? (dir === "right" ? 1 : -1) * (window.innerWidth * 1.1) : 0;
+        const offY = dir === "up" ? -window.innerHeight * 1.1 : 0;
         const current = el.style.transform || "";
         // Ensure rotate matches direction for a nicer feel
-        const rotate = dir === "right" ? 18 : -18;
-        el.style.transform = `${current} translateX(${offX}px) rotate(${rotate}deg)`;
+        const rotate = dir === "right" ? 18 : dir === "left" ? -18 : 0;
+        el.style.transform = `${current} translate(${offX}px, ${offY}px) rotate(${rotate}deg)`;
         const onEnd = () => {
             el.removeEventListener("transitionend", onEnd);
             afterDismiss(dir);
@@ -99,7 +116,8 @@ export default function SwipeDeck({
     function afterDismiss(dir: Direction) {
         const dismissed = stack[0];
         if (!dismissed) return;
-        onSwipe?.(dismissed, dir);
+        // Treat 'up' as a positive action akin to 'right' when notifying consumers
+        onSwipe?.(dismissed, dir === "up" ? "right" : dir);
         setStack((prev) => {
             const rest = prev.slice(1);
             if (loop) return [...rest, dismissed];
@@ -176,6 +194,9 @@ export default function SwipeDeck({
     }
 
     const top = stack[0];
+    const topIdNum = top ? Number(top.id) : NaN;
+    const isTopBoosted = top && highlightBoostedIds.includes(Number(top.id));
+    const isTopSuperLikedMe = top && highlightSuperLikeIds.includes(Number(top.id));
 
     // Reset photo index when top card changes
     useEffect(() => { setPhotoIndex(0); setDetailsOpen(false); }, [top?.id]);
@@ -220,6 +241,16 @@ export default function SwipeDeck({
                                     backgroundColor: bg ? undefined : "#0f172a",
                                 }}
                             />
+
+                            {/* Badges */}
+                            {isTop && (
+                                <div className="absolute left-3 top-3 z-10 flex flex-col gap-1">
+                                    {isTopSuperLikedMe && (
+                                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/90 px-2 py-0.5 text-[10px] font-medium text-black shadow">⭐ Super Liked you!</span>
+                                    )}
+                                    {/* Boosted badge hidden in deck per request */}
+                                </div>
+                            )}
 
                             {/* step indicators for gallery */}
                             {isTop && Array.isArray(p.images) && p.images.length > 1 && (
@@ -276,7 +307,17 @@ export default function SwipeDeck({
             </div>
 
             {/* Action buttons */}
-            <div className="mt-5 flex justify-center gap-6">
+            <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+                {/* Super Like */}
+                <button
+                    type="button"
+                    className="flex h-10 items-center justify-center gap-1 rounded-full border border-amber-400/40 bg-amber-500/20 px-3 text-amber-200 transition hover:brightness-110 disabled:opacity-50"
+                    onClick={() => { if (showSignupModal || !top) return; onSuperLike?.(top); animateAway("up"); }}
+                    disabled={!canSuperLike || !top}
+                    title={canSuperLike ? "Super Like" : (superLikeCooldownText ?? "Super Like on cooldown")}
+                >
+                    <Star className="h-4 w-4" /> <span className="text-xs font-medium">Super Like</span>
+                </button>
                 <button
                     type="button"
                     className="flex h-12 w-12 items-center justify-center rounded-full border border-white/15 bg-white/5 text-white/90 transition hover:brightness-110"
@@ -292,6 +333,16 @@ export default function SwipeDeck({
                     aria-label="Like"
                 >
                     <Heart className="h-5 w-5" />
+                </button>
+                {/* Boost */}
+                <button
+                    type="button"
+                    className="flex h-10 items-center justify-center gap-1 rounded-full border border-fuchsia-400/40 bg-fuchsia-500/20 px-3 text-fuchsia-200 transition hover:brightness-110 disabled:opacity-50"
+                    onClick={() => { if (showSignupModal) return; onBoost?.(); }}
+                    disabled={!canBoost}
+                    title={canBoost ? "Boost" : (boostCooldownText ?? "Boost on cooldown")}
+                >
+                    <Zap className="h-4 w-4" /> <span className="text-xs font-medium">Boost</span>
                 </button>
             </div>
 
