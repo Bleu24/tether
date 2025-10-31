@@ -11,6 +11,16 @@ import { interestLabel } from "@/lib/interests";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
+function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const toRad = (v: number) => (v * Math.PI) / 180;
+    const R = 6371; // km
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+}
+
 async function fetchMeDiscover(authCookie: string): Promise<any[]> {
     const res = await fetch(`${API_URL}/api/me/discover`, {
         headers: { Cookie: `auth_token=${authCookie}` },
@@ -109,6 +119,9 @@ export default async function DateDiscoverPage() {
 
     // Deduplicate candidates by id to avoid any accidental repeats from the API layer
     const seen = new Set<string | number>();
+    const meLat = typeof me?.latitude === "number" ? me.latitude : Number(me?.latitude);
+    const meLon = typeof me?.longitude === "number" ? me.longitude : Number(me?.longitude);
+    const hasMeGeo = Number.isFinite(meLat) && Number.isFinite(meLon);
     const deckItems: Profile[] = (discover ?? [])
         .filter((u: any) => {
             if (seen.has(u.id)) return false;
@@ -122,6 +135,12 @@ export default async function DateDiscoverPage() {
             image: Array.isArray(u.photos) && u.photos.length > 0 ? u.photos[0] : undefined,
             images: Array.isArray(u.photos) ? u.photos : undefined,
             bio: u.bio ?? undefined,
+            distanceKm: (() => {
+                const lat = typeof u.latitude === "number" ? u.latitude : Number(u.latitude);
+                const lon = typeof u.longitude === "number" ? u.longitude : Number(u.longitude);
+                if (!hasMeGeo || !Number.isFinite(lat) || !Number.isFinite(lon)) return undefined;
+                try { return haversineKm(Number(meLat), Number(meLon), Number(lat), Number(lon)); } catch { return undefined; }
+            })(),
             // Convert interest keys to user-facing labels; let card handle truncation
             tags: Array.isArray(u.preferences?.interests)
                 ? u.preferences.interests.map((k: string) => interestLabel(k))
