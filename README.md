@@ -1,5 +1,25 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Backend split (migration notice)
+
+The Node/Express backend that previously lived in `backend/` has been extracted into its own repository for production deployment and scaling.
+
+- Frontend (this repo): Next.js app deployed to Vercel
+- Backend (separate repo): Express + WebSockets + MySQL, deploy to Railway/Fly/Render/etc.
+
+What you need to run locally now:
+
+1. Start the backend from its new repository (set DB/JWT/CORS envs as before)
+2. Set the frontend env to point to your backend:
+
+	- `NEXT_PUBLIC_API_URL` = `https://your-backend-domain`
+	- `NEXT_PUBLIC_WS_URL` = `wss://your-backend-domain/ws` (or rely on the rewrite below)
+	- Optionally, `NEXT_PUBLIC_IMAGES_DOMAIN` for Next/Image remote optimization
+
+This repo’s `next.config.ts` supports an optional rewrite so you can call the backend with relative `/api/*` in the browser. Set `NEXT_PUBLIC_API_URL` and the app will proxy `/api/*` to your backend.
+
+Uploads are no longer expected to write to local disk in production. Configure S3/R2 in the backend and store public URLs in the database.
+
 ## Getting Started
 
 First, run the development server:
