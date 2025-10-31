@@ -119,7 +119,7 @@ export default function RightRail({ meId, deckItems, convos = [], boostedIds = [
                 setDeckEmpty(mapped.length === 0);
             } catch { }
         });
-        return () => off();
+        return () => { off(); };
     }, [meId, hub]);
 
     return (
