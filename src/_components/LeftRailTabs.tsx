@@ -10,9 +10,10 @@ type Props = {
     likers?: any[];
     meId?: number;
     myTier?: string;
+    superLikedByIds?: number[];
 };
 
-export default function LeftRailTabs({ convos, likers = [], meId, myTier }: Props) {
+export default function LeftRailTabs({ convos, likers = [], meId, myTier, superLikedByIds = [] }: Props) {
     const router = useRouter();
     const search = useSearchParams();
     const [tab, setTab] = React.useState<"matches" | "messages">("matches");
@@ -138,6 +139,7 @@ export default function LeftRailTabs({ convos, likers = [], meId, myTier }: Prop
                                         .slice(0, 2)
                                         .toUpperCase();
                                     const photo = Array.isArray(u.photos) && u.photos[0] ? u.photos[0] : null;
+                                    const isSuperLiked = superLikedByIds.includes(Number(u.id));
                                     return (
                                         <div key={`${u.id}-${idx}`} className="relative overflow-hidden rounded-md border border-white/10 bg-white/5" style={{ aspectRatio: "3 / 4" }}>
                                             {photo ? (
@@ -150,6 +152,11 @@ export default function LeftRailTabs({ convos, likers = [], meId, myTier }: Prop
                                             ) : (
                                                 <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-foreground/70">
                                                     {initials}
+                                                </div>
+                                            )}
+                                            {isSuperLiked && (
+                                                <div className="absolute left-1 top-1 rounded-full bg-amber-400 px-1.5 py-[2px] text-[10px] font-bold text-black shadow" title="Super Liked you">
+                                                    ★
                                                 </div>
                                             )}
                                         </div>
