@@ -24,7 +24,17 @@ export default function LeftRailTabs({ convos, likers = [], meId, myTier, superL
 
     // Derive views: mutual matches (no messages yet) vs conversations (with messages)
     const mutuals = React.useMemo(() => (convos || []).filter((c: any) => !c.latestMessage), [convos]);
-    const messagesOnly = React.useMemo(() => (convos || []).filter((c: any) => !!c.latestMessage), [convos]);
+    // Show all conversations (including brand-new matches with no messages yet) in Messages tab
+    const messagesList = React.useMemo(() => {
+        const list = Array.isArray(convos) ? [...convos] : [];
+        // sort by last activity: latestMessage.created_at or match.created_at
+        list.sort((a: any, b: any) => {
+            const aTime = new Date(a.latestMessage?.created_at ?? a.match?.created_at ?? 0).getTime();
+            const bTime = new Date(b.latestMessage?.created_at ?? b.match?.created_at ?? 0).getTime();
+            return bTime - aTime;
+        });
+        return list;
+    }, [convos]);
 
     // Optional: listen for real-time match events to flash a notice
     React.useEffect(() => {
@@ -205,7 +215,7 @@ export default function LeftRailTabs({ convos, likers = [], meId, myTier, superL
                     </div>
                 ) : (
                     <ul className="mt-3 space-y-2" role="tabpanel" aria-label="Messages">
-                        {messagesOnly.map((c: any) => (
+                        {messagesList.map((c: any) => (
                             <li
                                 key={c.match.id}
                                 className="flex cursor-pointer items-center justify-between rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm hover:bg-white/10"
@@ -250,7 +260,7 @@ export default function LeftRailTabs({ convos, likers = [], meId, myTier, superL
                                 </span>
                             </li>
                         ))}
-                        {messagesOnly.length === 0 && (
+                        {messagesList.length === 0 && (
                             <li className="text-center text-xs text-foreground/60">No messages</li>
                         )}
                     </ul>
