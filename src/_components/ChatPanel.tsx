@@ -54,7 +54,7 @@ export default function ChatPanel({ matchId, meId, convos = [] }: { matchId: num
     React.useEffect(() => { fetchMessages(); }, [fetchMessages]);
 
     // WebSocket realtime via shared hook
-    const hub = useWebSocketHub();
+    const hub = useWebSocketHub(true);
     React.useEffect(() => {
         if (!hub.ready || !matchId) return;
         hub.subscribe(matchId);

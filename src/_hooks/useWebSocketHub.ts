@@ -14,7 +14,7 @@ type HubMessage =
  * - Auto reconnect with simple backoff
  * - Subscribe/unsubscribe/typing helpers
  */
-export function useWebSocketHub() {
+export function useWebSocketHub(enabled: boolean = false) {
   // Build a robust WS URL that works whether NEXT_PUBLIC_API_URL ends with /api or not.
   function buildWsUrl(): string {
     const explicit = (process.env.NEXT_PUBLIC_WS_URL || "").trim();
@@ -55,6 +55,7 @@ export function useWebSocketHub() {
   const ensureConnectRef = useRef<(() => void) | null>(null);
   if (!ensureConnectRef.current) {
     ensureConnectRef.current = () => {
+      if (!enabled) return; // hard opt-in
       if (wsRef.current && (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING)) return;
       let backoff = 1000;
       const connect = () => {
@@ -76,7 +77,7 @@ export function useWebSocketHub() {
             setReady(false);
             wsRef.current = null;
             // Attempt reconnect if we still have listeners/subscriptions registered
-            if (listeners.current.size > 0) setTimeout(connect, Math.min(backoff, 8000));
+            if (enabled && listeners.current.size > 0) setTimeout(connect, Math.min(backoff, 8000));
             backoff *= 2;
           };
           ws.onerror = () => {
