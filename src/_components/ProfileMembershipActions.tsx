@@ -6,9 +6,37 @@ import SubscriptionModal from "@/_components/SubscriptionModal";
 const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000").replace(/\/$/, "");
 
 const PLANS = [
-    { id: "plus" as const, name: "Plus", price: "₱249/mo", perks: ["Unlimited likes", "1 Superlike/day", "See who liked you"] },
-    { id: "gold" as const, name: "Gold", price: "₱499/mo", perks: ["All Plus perks", "5 Superlikes/day", "Boost once a week"] },
-    { id: "premium" as const, name: "Premium", price: "₱899/mo", perks: ["All Gold perks", "Unlimited rewinds", "Priority in recommendations"] },
+    {
+        id: "plus" as const,
+        name: "Plus",
+        price: "₱249/mo",
+        perks: [
+            "Unlimited likes",
+            "See who liked you",
+            "1 Super Like/day",
+        ],
+    },
+    {
+        id: "gold" as const,
+        name: "Gold",
+        price: "₱499/mo",
+        perks: [
+            "All Plus perks",
+            "5 Super Likes/day",
+            "2 Boosts/day (30 min each)",
+        ],
+    },
+    {
+        id: "premium" as const,
+        name: "Premium",
+        price: "₱899/mo",
+        perks: [
+            "All Gold perks",
+            "Unlimited Super Likes",
+            "Unlimited Boosts (30 min each, 12h cooldown)",
+            "Priority in recommendations",
+        ],
+    },
 ];
 
 export default function ProfileMembershipActions({ userId, currentTier }: { userId: number; currentTier?: string | null }) {
