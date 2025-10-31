@@ -21,13 +21,10 @@ export default function DeleteAccountModal({ open, onClose, userId }: Props) {
         setLoading(true);
         setError(null);
         try {
-            // If no dedicated delete endpoint, soft-delete by clearing profile and disabling login could be implemented.
-            // Here we call users/:id with minimal payload to emulate deletion policy or you can wire a real DELETE.
             const res = await fetch(`${API_URL}/api/users/${userId}`, {
-                method: "PUT",
+                method: "DELETE",
                 credentials: "include",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name: "Deleted User", photos: [] }),
             });
             if (!res.ok) throw new Error(`Delete failed (${res.status})`);
             // Clear cookie by redirecting to signup; server may revoke session on profile mutation policy.
