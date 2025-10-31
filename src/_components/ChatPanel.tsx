@@ -24,6 +24,7 @@ export default function ChatPanel({ matchId, meId, convos = [] }: { matchId: num
         const c = Array.isArray(convos) ? convos.find((x: any) => x?.match?.id === matchId) : null;
         return c?.otherUser || null;
     }, [convos, matchId]);
+    const otherDeleted = !!(other as any)?.is_deleted;
 
     const fetchMessages = React.useCallback(async () => {
         try {
@@ -122,6 +123,11 @@ export default function ChatPanel({ matchId, meId, convos = [] }: { matchId: num
                 </button>
             </div>
             <div className="flex-1 min-h-0 overflow-y-auto rounded-xl border border-white/10 bg-white/5 p-3">
+                {otherDeleted && (
+                    <div className="mb-2 rounded-md border border-amber-400/40 bg-amber-500/20 p-2 text-xs text-amber-100">
+                        This user has deleted their account. You can read past messages, but chatting is disabled until they return.
+                    </div>
+                )}
                 {messages.length === 0 ? (
                     <div className="py-10 text-center text-sm text-foreground/60">Say hi to start the conversation.</div>
                 ) : (
@@ -146,12 +152,13 @@ export default function ChatPanel({ matchId, meId, convos = [] }: { matchId: num
                 <input
                     value={input}
                     onChange={(e) => { setInput(e.target.value); notifyTyping(); }}
-                    placeholder="Type a message"
-                    className="flex-1 rounded-md border border-white/10 bg-white/80 px-3 py-2 text-sm text-black placeholder:text-black/60 focus:outline-none"
+                    placeholder={otherDeleted ? "Chat disabled – user deleted" : "Type a message"}
+                    disabled={otherDeleted}
+                    className="flex-1 rounded-md border border-white/10 bg-white/80 px-3 py-2 text-sm text-black placeholder:text-black/60 focus:outline-none disabled:opacity-60"
                 />
                 <button
                     onClick={send}
-                    disabled={loading}
+                    disabled={loading || otherDeleted}
                     className="rounded-md bg-fuchsia-500 px-3 py-2 text-sm font-semibold text-black hover:brightness-105 disabled:opacity-60"
                 >
                     Send
