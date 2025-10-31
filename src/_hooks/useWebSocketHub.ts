@@ -51,50 +51,52 @@ export function useWebSocketHub() {
   const [unauthorized, setUnauthorized] = useState(false);
   const listeners = useRef<Set<(msg: HubMessage) => void>>(new Set());
 
-  useEffect(() => {
-    let cancelled = false;
-    let backoff = 1000;
-
-    const connect = () => {
-      try {
-        const ws = new WebSocket(WS_URL);
-        wsRef.current = ws;
-        ws.onopen = () => {
-          if (cancelled) return;
-          setReady(true);
-          backoff = 1000;
-        };
-        ws.onmessage = (ev) => {
-          if (cancelled) return;
-          let msg: HubMessage | null = null;
-          try { msg = JSON.parse(String(ev.data)); } catch { /* ignore */ }
-          if (!msg) return;
-          if ((msg as any)?.event === "unauthorized") setUnauthorized(true);
-          listeners.current.forEach((fn) => fn(msg!));
-        };
-        ws.onclose = () => {
-          if (cancelled) return;
-          setReady(false);
-          wsRef.current = null;
+  // Lazy-connect: only open a socket when someone subscribes or registers a listener
+  const ensureConnectRef = useRef<(() => void) | null>(null);
+  if (!ensureConnectRef.current) {
+    ensureConnectRef.current = () => {
+      if (wsRef.current && (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING)) return;
+      let backoff = 1000;
+      const connect = () => {
+        try {
+          const ws = new WebSocket(WS_URL);
+          wsRef.current = ws;
+          ws.onopen = () => {
+            setReady(true);
+            backoff = 1000;
+          };
+          ws.onmessage = (ev) => {
+            let msg: HubMessage | null = null;
+            try { msg = JSON.parse(String(ev.data)); } catch { /* ignore */ }
+            if (!msg) return;
+            if ((msg as any)?.event === "unauthorized") setUnauthorized(true);
+            listeners.current.forEach((fn) => fn(msg!));
+          };
+          ws.onclose = () => {
+            setReady(false);
+            wsRef.current = null;
+            // Attempt reconnect if we still have listeners/subscriptions registered
+            if (listeners.current.size > 0) setTimeout(connect, Math.min(backoff, 8000));
+            backoff *= 2;
+          };
+          ws.onerror = () => {
+            ws.close();
+          };
+        } catch {
           setTimeout(connect, Math.min(backoff, 8000));
           backoff *= 2;
-        };
-        ws.onerror = () => {
-          ws.close();
-        };
-      } catch {
-        setTimeout(connect, Math.min(backoff, 8000));
-        backoff *= 2;
-      }
+        }
+      };
+      connect();
     };
+  }
 
-    connect();
+  useEffect(() => {
     return () => {
-      cancelled = true;
       try { wsRef.current?.close(); } catch {}
       wsRef.current = null;
     };
-  }, [WS_URL]);
+  }, []);
 
   const api = useMemo(() => {
     function send(payload: any) {
@@ -107,6 +109,7 @@ export function useWebSocketHub() {
       ready,
       unauthorized,
       onMessage(fn: (msg: HubMessage) => void) {
+        ensureConnectRef.current?.();
         listeners.current.add(fn);
         return () => {
           // Ensure cleanup returns void; ignore the boolean from Set.delete
@@ -114,12 +117,15 @@ export function useWebSocketHub() {
         };
       },
       subscribe(matchId: number) {
+        ensureConnectRef.current?.();
         send({ type: "subscribe", matchId });
       },
       unsubscribe(matchId: number) {
+        ensureConnectRef.current?.();
         send({ type: "unsubscribe", matchId });
       },
       typing(matchId: number) {
+        ensureConnectRef.current?.();
         send({ type: "typing", matchId });
       },
     };
