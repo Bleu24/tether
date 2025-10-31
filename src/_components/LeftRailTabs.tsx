@@ -175,7 +175,7 @@ export default function LeftRailTabs({ convos, likers = [], meId, myTier, superL
                                                 headers: { "Content-Type": "application/json" },
                                                 body: JSON.stringify({ swiperId: Number(meId), targetId: Number(u.id), direction: "like" })
                                             });
-                                        } catch {}
+                                        } catch { }
                                         // Refresh conversations and navigate to the new match
                                         try {
                                             const res = await fetch(`${API_URL}/api/me/conversations`, { credentials: "include", cache: "no-store" });
@@ -194,7 +194,7 @@ export default function LeftRailTabs({ convos, likers = [], meId, myTier, superL
                                                 setFlash("No match yet—liked back");
                                                 setTimeout(() => setFlash(null), 2500);
                                             }
-                                        } catch {}
+                                        } catch { }
                                         finally {
                                             setLoadingLike((m) => ({ ...m, [Number(u.id)]: false }));
                                         }
