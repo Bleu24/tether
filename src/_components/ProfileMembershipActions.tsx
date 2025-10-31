@@ -84,23 +84,24 @@ export default function ProfileMembershipActions({ userId, currentTier }: { user
                 {PLANS.map((p) => {
                     const isCurrent = (currentTier ?? "free") === p.id;
                     return (
-                    <div key={p.id} className="rounded-lg border border-white/10 bg-white/5 p-3">
-                        <div className="text-sm font-semibold">{p.name}</div>
-                        <div className="mb-2 text-lg font-bold">{p.price}</div>
-                        <ul className="mb-3 list-disc space-y-1 pl-5 text-sm text-foreground/80 break-words">
-                            {p.perks.map((perk, i) => (
-                                <li key={i}>{perk}</li>
-                            ))}
-                        </ul>
-                        <button
-                            className="w-full rounded-md bg-fuchsia-500 px-3 py-2 text-sm font-semibold text-black hover:brightness-105 disabled:opacity-60"
-                            onClick={() => { if (!isCurrent) subscribe(p.id);} }
-                            disabled={!!busy || isCurrent}
-                        >
-                            {isCurrent ? "Current plan" : busy === p.id ? "Processing…" : `Choose ${p.name}`}
-                        </button>
-                    </div>
-                );})}
+                        <div key={p.id} className="rounded-lg border border-white/10 bg-white/5 p-3">
+                            <div className="text-sm font-semibold">{p.name}</div>
+                            <div className="mb-2 text-lg font-bold">{p.price}</div>
+                            <ul className="mb-3 list-disc space-y-1 pl-5 text-sm text-foreground/80 break-words">
+                                {p.perks.map((perk, i) => (
+                                    <li key={i}>{perk}</li>
+                                ))}
+                            </ul>
+                            <button
+                                className="w-full rounded-md bg-fuchsia-500 px-3 py-2 text-sm font-semibold text-black hover:brightness-105 disabled:opacity-60"
+                                onClick={() => { if (!isCurrent) subscribe(p.id); }}
+                                disabled={!!busy || isCurrent}
+                            >
+                                {isCurrent ? "Current plan" : busy === p.id ? "Processing…" : `Choose ${p.name}`}
+                            </button>
+                        </div>
+                    );
+                })}
             </div>
             <div className="mt-4 flex items-center justify-end gap-2 text-xs">
                 <button className="rounded-md border border-white/10 bg-white/5 px-3 py-1.5 hover:bg-white/10" onClick={() => setOpen(true)}>Open plans modal</button>
