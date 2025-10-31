@@ -5,6 +5,8 @@ import ProfileAccountActions from "@/_components/ProfileAccountActions";
 import LogoutButton from "@/_components/LogoutButton";
 import { Eye, EyeOff, Lock, Sparkles, ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import ProfileMembershipActions from "@/_components/ProfileMembershipActions";
+import { interestLabel } from "@/lib/interests";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -37,6 +39,10 @@ export default async function ProfilePage() {
         age: typeof me.age === "number" ? me.age : undefined,
         bio: me.bio ?? undefined,
         photos: Array.isArray(me.photos) ? me.photos.map((p: string) => resolveUrl(p)) : [],
+        // Convert interest keys to human-friendly labels for display
+        tags: Array.isArray(me.preferences?.interests)
+            ? me.preferences.interests.map((k: string) => interestLabel(k))
+            : [],
     };
 
     return (
@@ -55,19 +61,8 @@ export default async function ProfilePage() {
             <div className="mx-auto grid max-w-[1400px] grid-cols-1 gap-6 px-4 py-6 md:grid-cols-[360px_minmax(0,1fr)]">
                 {/* Left rail: in-page interactions */}
                 <aside className="space-y-4">
-                    {/* Membership */}
-                    <section className="rounded-xl border border-white/10 bg-white/5 p-4">
-                        <div className="flex items-center justify-between">
-                            <h2 className="text-sm font-semibold">Membership</h2>
-                            <span className="rounded-full bg-fuchsia-500/20 px-2 py-0.5 text-[11px] font-medium text-fuchsia-300">Preview</span>
-                        </div>
-                        <div className="mt-3 grid grid-cols-3 gap-2 text-sm">
-                            <button className="flex items-center justify-center gap-1.5 rounded-md border border-white/10 bg-white/5 px-3 py-2 hover:bg-white/10"><Sparkles className="h-3.5 w-3.5" /> Plus</button>
-                            <button className="flex items-center justify-center gap-1.5 rounded-md border border-white/10 bg-white/5 px-3 py-2 hover:bg-white/10 font-medium">Gold</button>
-                            <button className="flex items-center justify-center gap-1.5 rounded-md border border-white/10 bg-white/5 px-3 py-2 hover:bg-white/10">Premium</button>
-                        </div>
-                        <p className="mt-2 text-xs text-foreground/70">Plans are informational for now.</p>
-                    </section>
+                    {/* Membership (interactive) */}
+                    <ProfileMembershipActions userId={me.id} currentTier={me.subscription_tier ?? "free"} />
 
                     {/* Privacy */}
                     <section className="rounded-xl border border-white/10 bg-white/5 p-4">
