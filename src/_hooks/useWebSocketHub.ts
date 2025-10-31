@@ -15,9 +15,36 @@ type HubMessage =
  * - Subscribe/unsubscribe/typing helpers
  */
 export function useWebSocketHub() {
-  const WS_URL =
-    process.env.NEXT_PUBLIC_WS_URL ||
-    `${(process.env.NEXT_PUBLIC_API_URL || "").replace(/^http/, "ws")}/ws`;
+  // Build a robust WS URL that works whether NEXT_PUBLIC_API_URL ends with /api or not.
+  function buildWsUrl(): string {
+    const explicit = (process.env.NEXT_PUBLIC_WS_URL || "").trim();
+    if (explicit) return explicit;
+
+    const api = (process.env.NEXT_PUBLIC_API_URL || "").trim();
+    if (api) {
+      try {
+        const u = new URL(api);
+        // If API URL path ends with /api, strip it so that we hit /ws at the service root
+        u.pathname = u.pathname.replace(/\/?api\/?$/, "");
+        // Ensure single trailing / then append ws
+        u.pathname = `${u.pathname.replace(/\/$/, "")}/ws`;
+        u.protocol = u.protocol === "https:" ? "wss:" : "ws:";
+        return u.toString();
+      } catch {
+        // fallthrough to window origin below
+      }
+    }
+
+    if (typeof window !== "undefined") {
+      const u = new URL(window.location.href);
+      u.pathname = "/ws";
+      u.protocol = u.protocol === "https:" ? "wss:" : "ws:";
+      return u.toString();
+    }
+    return "ws://localhost:4000/ws";
+  }
+
+  const WS_URL = buildWsUrl();
 
   const wsRef = useRef<WebSocket | null>(null);
   const [ready, setReady] = useState(false);
