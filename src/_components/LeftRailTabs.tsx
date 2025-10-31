@@ -21,9 +21,22 @@ export default function LeftRailTabs({ convos, likers = [], meId, myTier, superL
     const [likersState, setLikersState] = React.useState<any[]>(likers);
     const [showSubPrompt, setShowSubPrompt] = React.useState<boolean>(false);
     const [subOpen, setSubOpen] = React.useState<boolean>(false);
+    const [loadingLike, setLoadingLike] = React.useState<Record<number, boolean>>({});
 
     // Derive views: mutual matches (no messages yet) vs conversations (with messages)
     const mutuals = React.useMemo(() => (convos || []).filter((c: any) => !c.latestMessage), [convos]);
+    // Users who are already matched (appear in convos) should NOT appear in "Likes you"
+    const matchedIds = React.useMemo(() => {
+        const ids = new Set<number>();
+        (Array.isArray(convos) ? convos : []).forEach((c: any) => {
+            const idNum = Number(c?.otherUser?.id);
+            if (Number.isFinite(idNum)) ids.add(idNum);
+        });
+        return ids;
+    }, [convos]);
+    const displayLikers = React.useMemo(() => {
+        return (Array.isArray(likersState) ? likersState : []).filter((u: any) => !matchedIds.has(Number(u?.id)));
+    }, [likersState, matchedIds]);
     // Show all conversations (including brand-new matches with no messages yet) in Messages tab
     const messagesList = React.useMemo(() => {
         const list = Array.isArray(convos) ? [...convos] : [];
@@ -141,7 +154,7 @@ export default function LeftRailTabs({ convos, likers = [], meId, myTier, superL
                         <div>
                             <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-foreground/60">Likes you</div>
                             <div className="grid grid-cols-5 gap-2 md:gap-3">
-                                {likersState.map((u, idx) => {
+                                {displayLikers.map((u, idx) => {
                                     const initials = (u.name || "?")
                                         .split(" ")
                                         .map((p: string) => p[0])
@@ -150,8 +163,44 @@ export default function LeftRailTabs({ convos, likers = [], meId, myTier, superL
                                         .toUpperCase();
                                     const photo = Array.isArray(u.photos) && u.photos[0] ? u.photos[0] : null;
                                     const isSuperLiked = superLikedByIds.includes(Number(u.id));
+                                    const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000").replace(/\/$/, "");
+                                    async function likeBackAndChat() {
+                                        if (!meId) return;
+                                        try {
+                                            setLoadingLike((m) => ({ ...m, [Number(u.id)]: true }));
+                                            setFlash("Opening chat…");
+                                            await fetch(`${API_URL}/api/swipes`, {
+                                                method: "POST",
+                                                credentials: "include",
+                                                headers: { "Content-Type": "application/json" },
+                                                body: JSON.stringify({ swiperId: Number(meId), targetId: Number(u.id), direction: "like" })
+                                            });
+                                        } catch {}
+                                        // Refresh conversations and navigate to the new match
+                                        try {
+                                            const res = await fetch(`${API_URL}/api/me/conversations`, { credentials: "include", cache: "no-store" });
+                                            const j = await res.json().catch(() => null);
+                                            const list = (j?.data ?? j ?? []) as any[];
+                                            const convo = list.find((c: any) => Number(c?.otherUser?.id) === Number(u.id));
+                                            if (convo?.match?.id) {
+                                                setFlash("Matched! Opening chat…");
+                                                // Optimistically remove from Likes You immediately
+                                                setLikersState((prev) => prev.filter((x: any) => Number(x?.id) !== Number(u.id)));
+                                                const url = new URL(window.location.href);
+                                                url.searchParams.set("matchId", String(convo.match.id));
+                                                url.searchParams.set("tab", "messages");
+                                                router.push(url.toString());
+                                            } else {
+                                                setFlash("No match yet—liked back");
+                                                setTimeout(() => setFlash(null), 2500);
+                                            }
+                                        } catch {}
+                                        finally {
+                                            setLoadingLike((m) => ({ ...m, [Number(u.id)]: false }));
+                                        }
+                                    }
                                     return (
-                                        <div key={`${u.id}-${idx}`} className="relative overflow-hidden rounded-md border border-white/10 bg-white/5" style={{ aspectRatio: "3 / 4" }}>
+                                        <button key={`${u.id}-${idx}`} className="relative overflow-hidden rounded-md border border-white/10 bg-white/5 focus:outline-none focus:ring-2 focus:ring-fuchsia-400" style={{ aspectRatio: "3 / 4" }} onClick={likeBackAndChat} aria-label={`Like back ${u.name ?? "user"} and open chat`}>
                                             {photo ? (
                                                 myTier === "free" ? (
                                                     <Blur img={photo} blurRadius={16} enableStyles style={{ height: "100%", width: "100%" }} />
@@ -169,10 +218,15 @@ export default function LeftRailTabs({ convos, likers = [], meId, myTier, superL
                                                     ★
                                                 </div>
                                             )}
-                                        </div>
+                                            {loadingLike[Number(u.id)] && (
+                                                <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                                                    <div className="h-6 w-6 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                                                </div>
+                                            )}
+                                        </button>
                                     );
                                 })}
-                                {likersState.length === 0 && (
+                                {displayLikers.length === 0 && (
                                     <div className="col-span-5 text-center text-xs text-foreground/60">
                                         No likes yet
                                     </div>
