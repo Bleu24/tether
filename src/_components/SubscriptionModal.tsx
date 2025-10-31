@@ -13,9 +13,37 @@ type Plan = {
 };
 
 const PLANS: Plan[] = [
-    { id: "plus", name: "Plus", price: "₱249/mo", perks: ["Unlimited likes", "1 Superlike/day", "See who liked you"] },
-    { id: "gold", name: "Gold", price: "₱499/mo", perks: ["All Plus perks", "5 Superlikes/day", "Boost once a week"] },
-    { id: "premium", name: "Premium", price: "₱899/mo", perks: ["All Gold perks", "Unlimited rewinds", "Priority in recommendations"] },
+    {
+        id: "plus",
+        name: "Plus",
+        price: "₱249/mo",
+        perks: [
+            "Unlimited likes",
+            "See who liked you",
+            "1 Super Like/day",
+        ],
+    },
+    {
+        id: "gold",
+        name: "Gold",
+        price: "₱499/mo",
+        perks: [
+            "All Plus perks",
+            "5 Super Likes/day",
+            "2 Boosts/day (30 min each)",
+        ],
+    },
+    {
+        id: "premium",
+        name: "Premium",
+        price: "₱899/mo",
+        perks: [
+            "All Gold perks",
+            "Unlimited Super Likes",
+            "Unlimited Boosts (30 min each, 12h cooldown)",
+            "Priority in recommendations",
+        ],
+    },
 ];
 
 export default function SubscriptionModal({ open, onClose, userId, onSubscribed }: { open: boolean; onClose: () => void; userId: number; onSubscribed?: (tier: string) => void; }) {
