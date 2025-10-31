@@ -60,7 +60,7 @@ export default function SubscriptionModal({ open, onClose, userId, onSubscribed 
                 const j = await res.json().catch(() => null);
                 const me = (j?.data ?? j ?? null) as any | null;
                 setCurrentTier(me?.subscription_tier ?? "free");
-            } catch {}
+            } catch { }
         })();
     }, [open]);
     async function subscribe(plan: Plan["id"]) {
