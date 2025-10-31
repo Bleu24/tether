@@ -14,6 +14,7 @@ export type Profile = {
     images?: string[]; // optional multiple images
     bio?: string;
     tags?: string[];
+    distanceKm?: number; // optional distance in kilometers for display
 };
 
 type Direction = "left" | "right" | "up";
@@ -275,6 +276,11 @@ export default function SwipeDeck({
                                             {p.name}
                                             {typeof p.age === "number" ? <span>, {p.age}</span> : null}
                                         </div>
+                                        {typeof p.distanceKm === "number" && Number.isFinite(p.distanceKm) && (
+                                            <div className="mt-0.5 text-xs text-white/85">
+                                                {p.distanceKm < 1 ? "<1 km away" : `${p.distanceKm.toFixed(1)} km away`}
+                                            </div>
+                                        )}
                                         {p.bio && (
                                             <p className={`mt-1 text-xs text-white/85 ${detailsOpen ? "line-clamp-none" : "line-clamp-2"}`}>{p.bio}</p>
                                         )}
