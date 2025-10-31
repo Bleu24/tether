@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useWebSocketHub } from "@/_hooks/useWebSocketHub";
 import { useRouter } from "next/navigation";
 
 type Message = {
@@ -52,33 +53,28 @@ export default function ChatPanel({ matchId, meId, convos = [] }: { matchId: num
 
     React.useEffect(() => { fetchMessages(); }, [fetchMessages]);
 
-    // WebSocket realtime: subscribe to match room and listen for new messages and typing events
-    const wsRef = React.useRef<WebSocket | null>(null);
+    // WebSocket realtime via shared hook
+    const hub = useWebSocketHub();
     React.useEffect(() => {
-        const urlBase = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000").replace(/^http/, "ws");
-        const ws = new WebSocket(`${urlBase}/ws?userId=${meId}`);
-        wsRef.current = ws;
-        ws.onopen = () => {
-            try { ws.send(JSON.stringify({ type: "subscribe", matchId })); } catch { }
-        };
-        ws.onmessage = (ev) => {
-            try {
-                const { event, data } = JSON.parse(ev.data);
-                if (event === "message:created" && data?.message?.match_id === matchId) {
-                    setMessages((prev) => [...prev, data.message]);
-                } else if (event === "message:typing" && data?.matchId === matchId) {
-                    const uid = data?.userId as number;
-                    if (uid && uid !== meId) {
-                        setTypingUserId(uid);
-                        // hide after 2 seconds of inactivity
-                        const t = setTimeout(() => setTypingUserId(null), 2000);
-                        return () => clearTimeout(t);
-                    }
+        if (!hub.ready || !matchId) return;
+        hub.subscribe(matchId);
+        const off = hub.onMessage((msg) => {
+            if (msg.event === "message:created" && (msg as any)?.data?.message?.match_id === matchId) {
+                setMessages((prev) => [...prev, (msg as any).data.message]);
+            } else if (msg.event === "message:typing" && (msg as any)?.data?.matchId === matchId) {
+                const uid = (msg as any)?.data?.userId as number;
+                if (uid && uid !== meId) {
+                    setTypingUserId(uid);
+                    const t = setTimeout(() => setTypingUserId(null), 2000);
+                    return () => clearTimeout(t);
                 }
-            } catch { /* ignore */ }
+            }
+        });
+        return () => {
+            try { hub.unsubscribe(matchId); } catch { }
+            off();
         };
-        return () => { try { ws.close(); } catch { } };
-    }, [matchId, meId]);
+    }, [hub, matchId, meId]);
 
     // Throttled typing signal
     const typingRef = React.useRef<number>(0);
@@ -86,9 +82,7 @@ export default function ChatPanel({ matchId, meId, convos = [] }: { matchId: num
         const now = Date.now();
         if (now - typingRef.current < 1200) return;
         typingRef.current = now;
-        try {
-            wsRef.current?.send(JSON.stringify({ type: "typing", matchId }));
-        } catch { }
+        try { hub.typing(matchId); } catch { }
     }
 
     async function send() {

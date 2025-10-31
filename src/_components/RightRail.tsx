@@ -8,6 +8,7 @@ import type { Profile } from "@/_components/SwipeDeck";
 import Link from "next/link";
 import { interestLabel } from "@/lib/interests";
 import { SlidersHorizontal, RefreshCw } from "lucide-react";
+import { useWebSocketHub } from "@/_hooks/useWebSocketHub";
 
 export default function RightRail({ meId, deckItems, convos = [], boostedIds = [], superLikedByIds = [] }: { meId: number; deckItems: Profile[]; convos?: any[]; boostedIds?: number[]; superLikedByIds?: number[] }) {
     const search = useSearchParams();
@@ -47,87 +48,79 @@ export default function RightRail({ meId, deckItems, convos = [], boostedIds = [
     // Important: don't early-return based on URL flags, to keep hook order stable across renders.
     const showChat = !!(matchId && Number.isFinite(matchId));
 
-    // Live refresh: listen for discover:refresh and fetch new deck data
+    // Live refresh: listen for discover:refresh via shared WS hook
+    const hub = useWebSocketHub();
     React.useEffect(() => {
         if (!meId) return;
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
-        const wsUrl = API_URL.replace(/^http/, "ws");
-        const ws = new WebSocket(`${wsUrl}/ws?userId=${meId}`);
-        ws.onmessage = async (ev) => {
+        const off = hub.onMessage(async (msg) => {
+            if (msg.event !== "discover:refresh") return;
             try {
-                const { event } = JSON.parse(ev.data);
-                if (event === "discover:refresh") {
-                    // fetch new discover list
-                    const discRes = await fetch(`${API_URL}/api/me/discover`, { credentials: "include", cache: "no-store" });
-                    if (!discRes.ok) return;
-                    const dj = await discRes.json().catch(() => null);
-                    const list = (dj?.data ?? dj ?? []) as any[];
-                    // fetch me to compute distances client-side so distance doesn't disappear after refresh
-                    let meLat: number | undefined; let meLon: number | undefined;
-                    try {
-                        const meRes = await fetch(`${API_URL}/api/me`, { credentials: "include", cache: "no-store" });
-                        if (meRes.ok) {
-                            const mj = await meRes.json().catch(() => null);
-                            const me = (mj?.data ?? mj ?? null) as any | null;
-                            const lat = typeof me?.latitude === "number" ? me.latitude : Number(me?.latitude);
-                            const lon = typeof me?.longitude === "number" ? me.longitude : Number(me?.longitude);
-                            if (Number.isFinite(lat) && Number.isFinite(lon)) { meLat = Number(lat); meLon = Number(lon); }
-                        }
-                    } catch { }
-                    const haversineKm = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
-                        const toRad = (v: number) => (v * Math.PI) / 180;
-                        const R = 6371;
-                        const dLat = toRad(lat2 - lat1);
-                        const dLon = toRad(lon2 - lon1);
-                        const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
-                        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-                        return R * c;
-                    };
-                    // map to Profile shape, computing distance when coords are available
-                    const mapped = list.map((u: any) => {
-                        const lat = typeof u.latitude === "number" ? u.latitude : Number(u.latitude);
-                        const lon = typeof u.longitude === "number" ? u.longitude : Number(u.longitude);
-                        const hasMe = Number.isFinite(meLat) && Number.isFinite(meLon);
-                        const hasU = Number.isFinite(lat) && Number.isFinite(lon);
-                        const distanceKm = hasMe && hasU && meLat !== undefined && meLon !== undefined
-                            ? haversineKm(meLat!, meLon!, Number(lat), Number(lon))
-                            : undefined;
-                        return {
-                            id: u.id,
-                            name: u.name,
-                            age: typeof u.age === "number" ? u.age : undefined,
-                            image: Array.isArray(u.photos) && u.photos.length > 0 ? u.photos[0] : undefined,
-                            images: Array.isArray(u.photos) ? u.photos : undefined,
-                            bio: u.bio ?? undefined,
-                            distanceKm,
-                            tags: Array.isArray(u.preferences?.interests)
-                                ? u.preferences.interests.map((k: string) => interestLabel(k))
-                                : [],
-                        } as Profile;
-                    });
-                    setItems(mapped);
-                    // compute boosted
-                    const ids = mapped.map((d) => Number(d.id));
-                    const params = encodeURIComponent(ids.join(","));
-                    const bRes = await fetch(`${API_URL}/api/boost/active?ids=${params}`, { credentials: "include", cache: "no-store" });
-                    const bj = await bRes.json().catch(() => null);
-                    const boostedIdsNew = (bj?.data?.boostedIds ?? bj?.boostedIds ?? []) as number[];
-                    setBoosted(boostedIdsNew);
-                    // refresh superlikers ids (optional)
-                    try {
-                        const slRes = await fetch(`${API_URL}/api/me/superlikers`, { credentials: "include", cache: "no-store" });
-                        const slj = await slRes.json().catch(() => null);
-                        const superlikers = (slj?.data ?? slj ?? []) as any[];
-                        setSlByIds(superlikers.map((u: any) => Number(u.id)).filter((n) => Number.isFinite(n)));
-                    } catch { }
-                    // force deck remount so internal stack resets to new items
-                    setDeckKey((k) => k + 1);
-                    setDeckEmpty(mapped.length === 0);
-                }
+                const discRes = await fetch(`${API_URL}/api/me/discover`, { credentials: "include", cache: "no-store" });
+                if (!discRes.ok) return;
+                const dj = await discRes.json().catch(() => null);
+                const list = (dj?.data ?? dj ?? []) as any[];
+                // fetch me to compute distances client-side so distance doesn't disappear after refresh
+                let meLat: number | undefined; let meLon: number | undefined;
+                try {
+                    const meRes = await fetch(`${API_URL}/api/me`, { credentials: "include", cache: "no-store" });
+                    if (meRes.ok) {
+                        const mj = await meRes.json().catch(() => null);
+                        const me = (mj?.data ?? mj ?? null) as any | null;
+                        const lat = typeof me?.latitude === "number" ? me.latitude : Number(me?.latitude);
+                        const lon = typeof me?.longitude === "number" ? me.longitude : Number(me?.longitude);
+                        if (Number.isFinite(lat) && Number.isFinite(lon)) { meLat = Number(lat); meLon = Number(lon); }
+                    }
+                } catch { }
+                const haversineKm = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+                    const toRad = (v: number) => (v * Math.PI) / 180;
+                    const R = 6371;
+                    const dLat = toRad(lat2 - lat1);
+                    const dLon = toRad(lon2 - lon1);
+                    const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+                    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                    return R * c;
+                };
+                const mapped = list.map((u: any) => {
+                    const lat = typeof u.latitude === "number" ? u.latitude : Number(u.latitude);
+                    const lon = typeof u.longitude === "number" ? u.longitude : Number(u.longitude);
+                    const hasMe = Number.isFinite(meLat) && Number.isFinite(meLon);
+                    const hasU = Number.isFinite(lat) && Number.isFinite(lon);
+                    const distanceKm = hasMe && hasU && meLat !== undefined && meLon !== undefined
+                        ? haversineKm(meLat!, meLon!, Number(lat), Number(lon))
+                        : undefined;
+                    return {
+                        id: u.id,
+                        name: u.name,
+                        age: typeof u.age === "number" ? u.age : undefined,
+                        image: Array.isArray(u.photos) && u.photos.length > 0 ? u.photos[0] : undefined,
+                        images: Array.isArray(u.photos) ? u.photos : undefined,
+                        bio: u.bio ?? undefined,
+                        distanceKm,
+                        tags: Array.isArray(u.preferences?.interests)
+                            ? u.preferences.interests.map((k: string) => interestLabel(k))
+                            : [],
+                    } as Profile;
+                });
+                setItems(mapped);
+                const ids = mapped.map((d) => Number(d.id));
+                const params = encodeURIComponent(ids.join(","));
+                const bRes = await fetch(`${API_URL}/api/boost/active?ids=${params}`, { credentials: "include", cache: "no-store" });
+                const bj = await bRes.json().catch(() => null);
+                const boostedIdsNew = (bj?.data?.boostedIds ?? bj?.boostedIds ?? []) as number[];
+                setBoosted(boostedIdsNew);
+                try {
+                    const slRes = await fetch(`${API_URL}/api/me/superlikers`, { credentials: "include", cache: "no-store" });
+                    const slj = await slRes.json().catch(() => null);
+                    const superlikers = (slj?.data ?? slj ?? []) as any[];
+                    setSlByIds(superlikers.map((u: any) => Number(u.id)).filter((n) => Number.isFinite(n)));
+                } catch { }
+                setDeckKey((k) => k + 1);
+                setDeckEmpty(mapped.length === 0);
             } catch { }
-        };
-        return () => { try { ws.close(); } catch { } };
-    }, [meId]);
+        });
+        return () => off();
+    }, [meId, hub]);
 
     return (
         <section className={`flex h-full flex-col ${showChat ? "items-stretch justify-stretch" : "items-center justify-center"}`}>
