@@ -1,8 +1,10 @@
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { type Profile } from "@/_components/SwipeDeck";
 import SwipeDeckWithActions from "@/_components/SwipeDeckWithActions";
-import { UserCircle2, Bolt, BarChart3, Shield, SlidersHorizontal, RefreshCw } from "lucide-react";
+import { UserCircle2, Bolt, BarChart3, Shield } from "lucide-react";
 import Link from "next/link";
 import LeftRailTabs from "@/_components/LeftRailTabs";
 import MatchOverlay from "@/_components/MatchOverlay";
@@ -21,101 +23,68 @@ function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): nu
     return R * c;
 }
 
-async function fetchMeDiscover(authCookie: string): Promise<any[]> {
-    const res = await fetch(`${API_URL}/api/me/discover`, {
-        headers: { Cookie: `auth_token=${authCookie}` },
-        cache: "no-store",
-    });
-    if (res.status === 401) redirect("/signup");
-    if (!res.ok) throw new Error(`Failed to load discover (${res.status})`);
-    const j = await res.json().catch(() => null);
-    return (j?.data ?? j ?? []) as any[];
-}
+export default function DateDiscoverPage() {
+    const router = useRouter();
+    const [me, setMe] = useState<any | null>(null);
+    const [convos, setConvos] = useState<any[]>([]);
+    const [likers, setLikers] = useState<any[]>([]);
+    const [superlikers, setSuperlikers] = useState<any[]>([]);
+    const [discover, setDiscover] = useState<any[]>([]);
+    const [boostedIds, setBoostedIds] = useState<number[]>([]);
+    const [loading, setLoading] = useState(true);
 
-async function fetchConversations(authCookie: string): Promise<any[]> {
-    const res = await fetch(`${API_URL}/api/me/conversations`, {
-        headers: { Cookie: `auth_token=${authCookie}` },
-        cache: "no-store",
-    });
-    if (res.status === 401) redirect("/signup");
-    if (!res.ok) throw new Error(`Failed to load conversations (${res.status})`);
-    const j = await res.json().catch(() => null);
-    return (j?.data ?? j ?? []) as any[];
-}
+    useEffect(() => {
+        let cancelled = false;
+        const go = async () => {
+            try {
+                const meRes = await fetch(`${API_URL}/api/me`, { credentials: "include", cache: "no-store" });
+                if (meRes.status === 401) { router.replace("/signup"); return; }
+                const meJson = await meRes.json().catch(() => null);
+                const meVal = (meJson?.data ?? meJson ?? null) as any | null;
+                if (!meVal) { router.replace("/signup"); return; }
+                if (meVal.is_deleted) { router.replace("/signup"); return; }
+                if (!meVal.setup_complete) { router.replace("/setup"); return; }
+                if (cancelled) return;
+                setMe(meVal);
 
-async function fetchLikers(authCookie: string): Promise<any[]> {
-    const res = await fetch(`${API_URL}/api/me/likers`, {
-        headers: { Cookie: `auth_token=${authCookie}` },
-        cache: "no-store",
-    });
-    if (res.status === 401) redirect("/signup");
-    if (!res.ok) throw new Error(`Failed to load likers (${res.status})`);
-    const j = await res.json().catch(() => null);
-    return (j?.data ?? j ?? []) as any[];
-}
+                const [d, c, l, s] = await Promise.all([
+                    fetch(`${API_URL}/api/me/discover`, { credentials: "include", cache: "no-store" }).then(r => r.ok ? r.json().catch(() => null) : Promise.reject(r.status)).catch(() => null),
+                    fetch(`${API_URL}/api/me/conversations`, { credentials: "include", cache: "no-store" }).then(r => r.ok ? r.json().catch(() => null) : Promise.reject(r.status)).catch(() => null),
+                    fetch(`${API_URL}/api/me/likers`, { credentials: "include", cache: "no-store" }).then(r => r.ok ? r.json().catch(() => null) : Promise.reject(r.status)).catch(() => null),
+                    (async () => {
+                        // small retry
+                        for (let i = 0; i < 3; i++) {
+                            const r = await fetch(`${API_URL}/api/me/superlikers`, { credentials: "include", cache: "no-store" });
+                            if (r.ok) return r.json().catch(() => null);
+                            await new Promise(res => setTimeout(res, 150 * (i + 1)));
+                        }
+                        return null;
+                    })(),
+                ]);
+                const dData = (d?.data ?? d ?? []) as any[];
+                const cData = (c?.data ?? c ?? []) as any[];
+                const lData = (l?.data ?? l ?? []) as any[];
+                const sData = (s?.data ?? s ?? []) as any[];
+                if (cancelled) return;
+                setDiscover(dData);
+                setConvos(cData);
+                setLikers(lData);
+                setSuperlikers(sData);
 
-async function fetchSuperLikers(authCookie: string): Promise<any[]> {
-    // Tiny retry/backoff for flaky networks (2 retries)
-    const attempt = async () => {
-        const res = await fetch(`${API_URL}/api/me/superlikers`, {
-            headers: { Cookie: `auth_token=${authCookie}` },
-            cache: "no-store",
-        });
-        if (res.status === 401) redirect("/signup");
-        if (!res.ok) throw new Error(String(res.status));
-        const j = await res.json().catch(() => null);
-        return (j?.data ?? j ?? []) as any[];
-    };
-    try { return await attempt(); }
-    catch { await new Promise(r => setTimeout(r, 150)); }
-    try { return await attempt(); }
-    catch { await new Promise(r => setTimeout(r, 400)); }
-    try { return await attempt(); }
-    catch { return []; }
-}
-
-async function fetchBoostedActive(authCookie: string, ids: number[]): Promise<number[]> {
-    if (!ids.length) return [];
-    const params = encodeURIComponent(ids.join(","));
-    const res = await fetch(`${API_URL}/api/boost/active?ids=${params}`, {
-        headers: { Cookie: `auth_token=${authCookie}` },
-        cache: "no-store",
-    });
-    if (res.status === 401) redirect("/signup");
-    if (!res.ok) return [];
-    const j = await res.json().catch(() => null);
-    return (j?.data?.boostedIds ?? j?.boostedIds ?? []) as number[];
-}
-
-async function fetchMe(authCookie: string): Promise<any | null> {
-    const res = await fetch(`${API_URL}/api/me`, {
-        headers: { Cookie: `auth_token=${authCookie}` },
-        cache: "no-store",
-    });
-    if (res.status === 401) redirect("/signup");
-    if (!res.ok) return null;
-    const j = await res.json().catch(() => null);
-    const me = (j?.data ?? j ?? null) as any | null;
-    if (me?.is_deleted) redirect("/signup");
-    return me;
-}
-
-export default async function DateDiscoverPage() {
-    const cookieStore = await (cookies() as any);
-    const auth = cookieStore.get("auth_token")?.value;
-    if (!auth) redirect("/signup");
-
-    const [me, discover, convos, likers, superlikers] = await Promise.all([
-        fetchMe(auth),
-        fetchMeDiscover(auth),
-        fetchConversations(auth),
-        fetchLikers(auth),
-        fetchSuperLikers(auth),
-    ]);
-
-    if (me && !me.setup_complete) {
-        redirect("/setup");
-    }
+                const ids = dData.map((x: any) => Number(x?.id)).filter((n: number) => Number.isFinite(n));
+                if (ids.length) {
+                    fetch(`${API_URL}/api/boost/active?ids=${encodeURIComponent(ids.join(","))}`, { credentials: "include", cache: "no-store" })
+                        .then(r => r.ok ? r.json().catch(() => null) : null)
+                        .then(j => setBoostedIds((j?.data?.boostedIds ?? j?.boostedIds ?? []) as number[]))
+                        .catch(() => { });
+                }
+            } finally {
+                if (!cancelled) setLoading(false);
+            }
+        };
+        go();
+        return () => { cancelled = true; };
+    }, [router]);
 
     // Deduplicate candidates by id to avoid any accidental repeats from the API layer
     const seen = new Set<string | number>();
@@ -147,8 +116,10 @@ export default async function DateDiscoverPage() {
                 : [],
         }));
 
-    const boostedIds = await fetchBoostedActive(auth, deckItems.map(d => Number(d.id)));
-    const superLikedByIds = (superlikers ?? []).map((u: any) => Number(u.id)).filter((n) => Number.isFinite(n));
+    const superLikedByIds = useMemo(() => (superlikers ?? []).map((u: any) => Number(u.id)).filter((n) => Number.isFinite(n)), [superlikers]);
+    if (loading) {
+        return <main className="h-screen bg-background text-foreground overflow-hidden"><div className="p-6 text-sm">Loading…</div></main>;
+    }
 
     return (
         <main className="h-screen bg-background text-foreground overflow-hidden">
