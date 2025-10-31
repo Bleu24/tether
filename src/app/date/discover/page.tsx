@@ -4,10 +4,10 @@ import { type Profile } from "@/_components/SwipeDeck";
 import SwipeDeckWithActions from "@/_components/SwipeDeckWithActions";
 import { UserCircle2, Bolt, BarChart3, Shield, SlidersHorizontal, RefreshCw } from "lucide-react";
 import Link from "next/link";
-import DismissibleOffer from "@/_components/DismissibleOffer";
 import LeftRailTabs from "@/_components/LeftRailTabs";
 import MatchOverlay from "@/_components/MatchOverlay";
 import RightRail from "@/_components/RightRail";
+import { interestLabel } from "@/lib/interests";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -86,7 +86,10 @@ export default async function DateDiscoverPage() {
             image: Array.isArray(u.photos) && u.photos.length > 0 ? u.photos[0] : undefined,
             images: Array.isArray(u.photos) ? u.photos : undefined,
             bio: u.bio ?? undefined,
-            tags: Array.isArray(u.preferences?.interests) ? u.preferences.interests.slice(0, 4) : [],
+            // Convert interest keys to user-facing labels; let card handle truncation
+            tags: Array.isArray(u.preferences?.interests)
+                ? u.preferences.interests.map((k: string) => interestLabel(k))
+                : [],
         }));
 
     return (
@@ -117,14 +120,7 @@ export default async function DateDiscoverPage() {
                         </div>
                     </div>
 
-                    {/* Notification card */}
-                    <div className="mt-4 rounded-lg border border-white/10 bg-gradient-to-br from-pink-500/20 via-fuchsia-500/10 to-orange-400/20 p-4">
-                        <DismissibleOffer storageKey="discover_offer_dismissed">
-                            <div className="text-sm font-medium">Get a Free Boost</div>
-                            <p className="mt-1 text-xs text-foreground/80">Upgrade to Gold, get a one-time Boost!</p>
-                            <button className="mt-3 w-full rounded-md bg-fuchsia-500 px-3 py-2 text-sm font-medium text-black hover:brightness-105">Claim Offer</button>
-                        </DismissibleOffer>
-                    </div>
+                    {/* Notification card removed by request */}
 
                     {/* Matches/Messages tabs */}
                     <LeftRailTabs convos={convos} likers={likers} meId={Number(me?.id)} myTier={me?.subscription_tier} />
