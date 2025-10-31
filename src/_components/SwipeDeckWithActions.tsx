@@ -27,7 +27,7 @@ export default function SwipeDeckWithActions({ items, meId, loop = false, booste
     }
 
     React.useEffect(() => { refreshLimits(); }, []);
-    async function handleSwipe(p: Profile, dir: "left" | "right") {
+    async function handleSwipe(p: Profile, dir: "left" | "right" | "up") {
         const direction = dir === "left" ? "pass" : "like";
         try {
             await fetch(`${API_URL}/api/swipes`, {
