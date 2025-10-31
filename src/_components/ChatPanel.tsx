@@ -65,8 +65,8 @@ export default function ChatPanel({ matchId, meId, convos = [] }: { matchId: num
                 const uid = (msg as any)?.data?.userId as number;
                 if (uid && uid !== meId) {
                     setTypingUserId(uid);
-                    const t = setTimeout(() => setTypingUserId(null), 2000);
-                    return () => clearTimeout(t);
+                    // hide after 2 seconds of inactivity
+                    setTimeout(() => setTypingUserId(null), 2000);
                 }
             }
         });

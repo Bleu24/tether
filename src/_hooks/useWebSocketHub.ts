@@ -81,7 +81,10 @@ export function useWebSocketHub() {
       unauthorized,
       onMessage(fn: (msg: HubMessage) => void) {
         listeners.current.add(fn);
-        return () => listeners.current.delete(fn);
+        return () => {
+          // Ensure cleanup returns void; ignore the boolean from Set.delete
+          listeners.current.delete(fn);
+        };
       },
       subscribe(matchId: number) {
         send({ type: "subscribe", matchId });
