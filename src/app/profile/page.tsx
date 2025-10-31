@@ -7,6 +7,7 @@ import { Eye, EyeOff, Lock, Sparkles, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import ProfileMembershipActions from "@/_components/ProfileMembershipActions";
 import { interestLabel } from "@/lib/interests";
+import ResourceCounters from "@/_components/ResourceCounters";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -20,7 +21,42 @@ async function fetchMe(authCookie: string): Promise<any | null> {
     if (res.status === 401) redirect("/signup");
     if (!res.ok) return null;
     const j = await res.json().catch(() => null);
-    return (j?.data ?? j ?? null) as any | null;
+    const me = (j?.data ?? j ?? null) as any | null;
+    if (me?.is_deleted) redirect("/signup");
+    return me;
+}
+
+async function fetchSuperLikeCan(authCookie: string): Promise<{ remaining?: number | null; next?: string | null }> {
+    const res = await fetch(`${API_URL}/api/superlike/can`, {
+        headers: { Cookie: `auth_token=${authCookie}` },
+        cache: "no-store",
+    });
+    if (!res.ok) return { remaining: undefined, next: null };
+    const j = await res.json().catch(() => null);
+    const d = (j?.data ?? j ?? {}) as any;
+    return { remaining: d.remaining ?? (d.canUse ? (d.window === "daily" ? 1 : null) : 0), next: d.nextAvailableAt ?? null };
+}
+
+async function fetchBoostCan(authCookie: string): Promise<{ remaining?: number | null; next?: string | null }> {
+    const res = await fetch(`${API_URL}/api/boost/can`, {
+        headers: { Cookie: `auth_token=${authCookie}` },
+        cache: "no-store",
+    });
+    if (!res.ok) return { remaining: undefined, next: null };
+    const j = await res.json().catch(() => null);
+    const d = (j?.data ?? j ?? {}) as any;
+    return { remaining: d.remaining ?? (d.canActivate ? 1 : 0), next: d.nextAvailableAt ?? null };
+}
+
+async function fetchBoostActiveSelf(authCookie: string, meId: number): Promise<boolean> {
+    const res = await fetch(`${API_URL}/api/boost/active?ids=${encodeURIComponent(String(meId))}`, {
+        headers: { Cookie: `auth_token=${authCookie}` },
+        cache: "no-store",
+    });
+    if (!res.ok) return false;
+    const j = await res.json().catch(() => null);
+    const list = (j?.data?.boostedIds ?? j?.boostedIds ?? []) as number[];
+    return Array.isArray(list) && list.includes(Number(meId));
 }
 
 export default async function ProfilePage() {
@@ -28,8 +64,13 @@ export default async function ProfilePage() {
     const auth = cookieStore.get("auth_token")?.value;
     if (!auth) redirect("/signup");
 
-    const me = await fetchMe(auth);
+    const [me, slCan, boostCan] = await Promise.all([
+        fetchMe(auth),
+        fetchSuperLikeCan(auth),
+        fetchBoostCan(auth),
+    ]);
     if (!me) redirect("/signup");
+    const isBoostActive = await fetchBoostActiveSelf(auth, Number(me.id));
 
     const resolveUrl = (u: string) => (u?.startsWith("http") ? u : `${API_URL}${u}`);
 
@@ -63,6 +104,9 @@ export default async function ProfilePage() {
                 <aside className="space-y-4">
                     {/* Membership (interactive) */}
                     <ProfileMembershipActions userId={me.id} currentTier={me.subscription_tier ?? "free"} />
+
+                    {/* Resources counters (live timers) */}
+                    <ResourceCounters superLike={slCan} boost={boostCan} />
 
                     {/* Privacy */}
                     <section className="rounded-xl border border-white/10 bg-white/5 p-4">
@@ -100,6 +144,11 @@ export default async function ProfilePage() {
                 {/* Right rail: profile preview */}
                 <section className="pb-10">
                     <div className="mx-auto max-w-md">
+                        {isBoostActive && (
+                            <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-fuchsia-500/90 px-3 py-1 text-xs font-semibold text-black shadow">
+                                ⚡ Boost active
+                            </div>
+                        )}
                         <ProfilePreview user={previewUser} />
                     </div>
                 </section>
