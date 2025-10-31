@@ -13,12 +13,20 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
   return (
     <html lang="en">
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       </head>
       <body>
+        {!apiUrl && (
+          <div className="w-full bg-amber-500/15 text-amber-200 border-b border-amber-400/30">
+            <div className="mx-auto max-w-7xl px-4 py-2 text-center text-xs">
+              Backend not configured yet — some features may be limited. Set NEXT_PUBLIC_API_URL after deploying the API.
+            </div>
+          </div>
+        )}
         <UserProvider>
           <AppChrome>{children}</AppChrome>
         </UserProvider>
