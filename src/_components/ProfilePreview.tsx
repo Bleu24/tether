@@ -10,6 +10,7 @@ export type PreviewUser = {
     bio?: string | null;
     photos?: string[] | null;
     tags?: string[] | null; // interests and quick badges
+    distanceKm?: number | null; // optional for self preview display
 };
 
 export default function ProfilePreview({ user }: { user: PreviewUser }) {
@@ -52,6 +53,11 @@ export default function ProfilePreview({ user }: { user: PreviewUser }) {
                                 {user.name}
                                 {typeof user.age === "number" ? <span>, {user.age}</span> : null}
                             </div>
+                            {typeof user.distanceKm === "number" && Number.isFinite(user.distanceKm) && (
+                                <div className="mt-0.5 text-xs text-white/85">
+                                    {user.distanceKm < 1 ? "<1 km away" : `${user.distanceKm.toFixed(1)} km away`}
+                                </div>
+                            )}
                             {user.bio && (
                                 detailsOpen ? (
                                     <div className="mt-2 max-h-40 overflow-y-auto pr-1 text-xs text-white/85">
