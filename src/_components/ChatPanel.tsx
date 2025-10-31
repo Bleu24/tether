@@ -24,7 +24,16 @@ export default function ChatPanel({ matchId, meId, convos = [] }: { matchId: num
         const c = Array.isArray(convos) ? convos.find((x: any) => x?.match?.id === matchId) : null;
         return c?.otherUser || null;
     }, [convos, matchId]);
-    const otherDeleted = !!(other as any)?.is_deleted;
+    // persist other user so avatar/name don't flicker on refresh
+    const [otherPersist, setOtherPersist] = React.useState<any | null>(null);
+    React.useEffect(() => {
+        if (other && otherPersist == null) setOtherPersist(other);
+        if (other && otherPersist && otherPersist.id !== other.id) setOtherPersist(other);
+        // do not clear when other becomes null; keep previous
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [other]);
+    const showOther = other || otherPersist;
+    const otherDeleted = !!(showOther as any)?.is_deleted;
 
     const fetchMessages = React.useCallback(async () => {
         try {
@@ -114,7 +123,19 @@ export default function ChatPanel({ matchId, meId, convos = [] }: { matchId: num
     return (
         <div className="flex h-full w-full flex-col">
             <div className="mb-2 flex items-center justify-between text-sm text-foreground/70">
-                <div className="font-medium">{other?.name ?? `Match #${matchId}`}</div>
+                <div className="flex items-center gap-2">
+                    <div className="h-7 w-7 overflow-hidden rounded-full border border-white/10 bg-white/10">
+                        {Array.isArray(showOther?.photos) && (showOther as any)?.photos?.[0] ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={(showOther as any).photos[0]} alt={(showOther as any)?.name ?? "User"} className="h-full w-full object-cover" />
+                        ) : (
+                            <div className="flex h-full w-full items-center justify-center text-[10px] font-semibold text-foreground/70">
+                                {((showOther as any)?.name ?? "?").slice(0, 2).toUpperCase()}
+                            </div>
+                        )}
+                    </div>
+                    <div className="font-medium">{(showOther as any)?.name ?? `Match #${matchId}`}</div>
+                </div>
                 <button
                     className="rounded-md border border-white/10 bg-white/10 px-2 py-1 text-xs hover:bg-white/15"
                     onClick={goBackToDeck}
@@ -129,7 +150,12 @@ export default function ChatPanel({ matchId, meId, convos = [] }: { matchId: num
                     </div>
                 )}
                 {messages.length === 0 ? (
-                    <div className="py-10 text-center text-sm text-foreground/60">Say hi to start the conversation.</div>
+                    <div className="py-10 text-center">
+                        <div className="text-sm font-medium">{(showOther as any)?.name ?? `Match #${matchId}`}</div>
+                        {!otherDeleted && (
+                            <div className="mt-2 text-sm text-foreground/60">Say hi to start the conversation.</div>
+                        )}
+                    </div>
                 ) : (
                     <ul className="space-y-2">
                         {messages.map((m) => (
