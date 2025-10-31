@@ -44,6 +44,39 @@ async function fetchLikers(authCookie: string): Promise<any[]> {
     return (j?.data ?? j ?? []) as any[];
 }
 
+async function fetchSuperLikers(authCookie: string): Promise<any[]> {
+    // Tiny retry/backoff for flaky networks (2 retries)
+    const attempt = async () => {
+        const res = await fetch(`${API_URL}/api/me/superlikers`, {
+            headers: { Cookie: `auth_token=${authCookie}` },
+            cache: "no-store",
+        });
+        if (res.status === 401) redirect("/signup");
+        if (!res.ok) throw new Error(String(res.status));
+        const j = await res.json().catch(() => null);
+        return (j?.data ?? j ?? []) as any[];
+    };
+    try { return await attempt(); }
+    catch { await new Promise(r => setTimeout(r, 150)); }
+    try { return await attempt(); }
+    catch { await new Promise(r => setTimeout(r, 400)); }
+    try { return await attempt(); }
+    catch { return []; }
+}
+
+async function fetchBoostedActive(authCookie: string, ids: number[]): Promise<number[]> {
+    if (!ids.length) return [];
+    const params = encodeURIComponent(ids.join(","));
+    const res = await fetch(`${API_URL}/api/boost/active?ids=${params}`, {
+        headers: { Cookie: `auth_token=${authCookie}` },
+        cache: "no-store",
+    });
+    if (res.status === 401) redirect("/signup");
+    if (!res.ok) return [];
+    const j = await res.json().catch(() => null);
+    return (j?.data?.boostedIds ?? j?.boostedIds ?? []) as number[];
+}
+
 async function fetchMe(authCookie: string): Promise<any | null> {
     const res = await fetch(`${API_URL}/api/me`, {
         headers: { Cookie: `auth_token=${authCookie}` },
@@ -52,7 +85,9 @@ async function fetchMe(authCookie: string): Promise<any | null> {
     if (res.status === 401) redirect("/signup");
     if (!res.ok) return null;
     const j = await res.json().catch(() => null);
-    return (j?.data ?? j ?? null) as any | null;
+    const me = (j?.data ?? j ?? null) as any | null;
+    if (me?.is_deleted) redirect("/signup");
+    return me;
 }
 
 export default async function DateDiscoverPage() {
@@ -60,11 +95,12 @@ export default async function DateDiscoverPage() {
     const auth = cookieStore.get("auth_token")?.value;
     if (!auth) redirect("/signup");
 
-    const [me, discover, convos, likers] = await Promise.all([
+    const [me, discover, convos, likers, superlikers] = await Promise.all([
         fetchMe(auth),
         fetchMeDiscover(auth),
         fetchConversations(auth),
         fetchLikers(auth),
+        fetchSuperLikers(auth),
     ]);
 
     if (me && !me.setup_complete) {
@@ -91,6 +127,9 @@ export default async function DateDiscoverPage() {
                 ? u.preferences.interests.map((k: string) => interestLabel(k))
                 : [],
         }));
+
+    const boostedIds = await fetchBoostedActive(auth, deckItems.map(d => Number(d.id)));
+    const superLikedByIds = (superlikers ?? []).map((u: any) => Number(u.id)).filter((n) => Number.isFinite(n));
 
     return (
         <main className="h-screen bg-background text-foreground overflow-hidden">
@@ -123,12 +162,12 @@ export default async function DateDiscoverPage() {
                     {/* Notification card removed by request */}
 
                     {/* Matches/Messages tabs */}
-                    <LeftRailTabs convos={convos} likers={likers} meId={Number(me?.id)} myTier={me?.subscription_tier} />
+                    <LeftRailTabs convos={convos} likers={likers} meId={Number(me?.id)} myTier={me?.subscription_tier} superLikedByIds={superLikedByIds} />
                 </aside>
 
                 {/* Right: deck or chat panel (client switches via URL) */}
                 <MatchOverlay meId={Number(me?.id)} />
-                <RightRail meId={Number(me?.id)} deckItems={deckItems} convos={convos} />
+                <RightRail meId={Number(me?.id)} deckItems={deckItems} convos={convos} boostedIds={boostedIds} superLikedByIds={superLikedByIds} />
             </div>
         </main>
     );
