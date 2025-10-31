@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { VISIBLE_TAGS_COLLAPSED } from "@/lib/interests";
 
 export type PreviewUser = {
     id: number;
@@ -8,6 +9,7 @@ export type PreviewUser = {
     age?: number | null;
     bio?: string | null;
     photos?: string[] | null;
+    tags?: string[] | null; // interests and quick badges
 };
 
 export default function ProfilePreview({ user }: { user: PreviewUser }) {
@@ -58,6 +60,13 @@ export default function ProfilePreview({ user }: { user: PreviewUser }) {
                                 ) : (
                                     <p className="mt-1 line-clamp-2 text-xs text-white/85">{user.bio}</p>
                                 )
+                            )}
+                            {Array.isArray(user.tags) && user.tags.length > 0 && (
+                                <div className="mt-2 flex flex-wrap gap-1">
+                                    {(detailsOpen ? user.tags : user.tags.slice(0, VISIBLE_TAGS_COLLAPSED)).map((t) => (
+                                        <span key={t} className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-white/90">{t}</span>
+                                    ))}
+                                </div>
                             )}
                             <div className="mt-2 text-[10px] text-white/70">
                                 {detailsOpen ? "Tap to collapse details" : "Tap to view more"}
