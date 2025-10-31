@@ -4,6 +4,7 @@ import { useRef, useState, useMemo, useEffect, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { Heart, X } from "lucide-react";
+import { VISIBLE_TAGS_COLLAPSED } from "@/lib/interests";
 
 export type Profile = {
     id: string | number;
@@ -248,7 +249,7 @@ export default function SwipeDeck({
                                         )}
                                         {p.tags && p.tags.length > 0 && (
                                             <div className="mt-2 flex flex-wrap gap-1">
-                                                {(detailsOpen ? p.tags : p.tags.slice(0, 4)).map((t) => (
+                                                {(detailsOpen ? p.tags : p.tags.slice(0, VISIBLE_TAGS_COLLAPSED)).map((t) => (
                                                     <span key={t} className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-white/90">{t}</span>
                                                 ))}
                                             </div>
