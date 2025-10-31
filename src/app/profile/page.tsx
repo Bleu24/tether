@@ -48,6 +48,17 @@ async function fetchBoostCan(authCookie: string): Promise<{ remaining?: number |
     return { remaining: d.remaining ?? (d.canActivate ? 1 : 0), next: d.nextAvailableAt ?? null };
 }
 
+async function fetchBoostStatus(authCookie: string): Promise<{ isActive: boolean; endsAt?: string | null; nextAvailableAt?: string | null; canActivate: boolean }> {
+    const res = await fetch(`${API_URL}/api/boost/status`, {
+        headers: { Cookie: `auth_token=${authCookie}` },
+        cache: "no-store",
+    });
+    if (!res.ok) return { isActive: false, canActivate: false, nextAvailableAt: null } as any;
+    const j = await res.json().catch(() => null);
+    const d = (j?.data ?? j ?? {}) as any;
+    return { isActive: !!d.isActive, endsAt: d.endsAt ?? null, nextAvailableAt: d.nextAvailableAt ?? null, canActivate: !!d.canActivate };
+}
+
 async function fetchBoostActiveSelf(authCookie: string, meId: number): Promise<boolean> {
     const res = await fetch(`${API_URL}/api/boost/active?ids=${encodeURIComponent(String(meId))}`, {
         headers: { Cookie: `auth_token=${authCookie}` },
@@ -71,6 +82,7 @@ export default async function ProfilePage() {
     ]);
     if (!me) redirect("/signup");
     const isBoostActive = await fetchBoostActiveSelf(auth, Number(me.id));
+    const boostStatus = await fetchBoostStatus(auth);
 
     const resolveUrl = (u: string) => (u?.startsWith("http") ? u : `${API_URL}${u}`);
 
@@ -106,7 +118,7 @@ export default async function ProfilePage() {
                     <ProfileMembershipActions userId={me.id} currentTier={me.subscription_tier ?? "free"} />
 
                     {/* Resources counters (live timers) */}
-                    <ResourceCounters superLike={slCan} boost={boostCan} />
+                    <ResourceCounters superLike={slCan} boost={{ ...boostCan, activeUntil: boostStatus.isActive ? (boostStatus.endsAt ?? null) : null }} />
 
                     {/* Privacy */}
                     <section className="rounded-xl border border-white/10 bg-white/5 p-4">
